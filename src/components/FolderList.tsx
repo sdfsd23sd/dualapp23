@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Folder, FolderOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import ShareFolderDialog from "./ShareFolderDialog";
 
 interface Folder {
   id: string;
@@ -63,22 +64,28 @@ export default function FolderList() {
   return (
     <div className="space-y-1">
       {folders.map((folder) => (
-        <Button
-          key={folder.id}
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-2",
-            selectedFolder === folder.id && "bg-accent"
-          )}
-          onClick={() => setSelectedFolder(folder.id === selectedFolder ? null : folder.id)}
-        >
-          {selectedFolder === folder.id ? (
-            <FolderOpen className="h-4 w-4" />
-          ) : (
-            <Folder className="h-4 w-4" />
-          )}
-          <span className="truncate">{folder.name}</span>
-        </Button>
+        <div key={folder.id} className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            className={cn(
+              "flex-1 justify-start gap-2",
+              selectedFolder === folder.id && "bg-accent"
+            )}
+            onClick={() => setSelectedFolder(folder.id === selectedFolder ? null : folder.id)}
+          >
+            {selectedFolder === folder.id ? (
+              <FolderOpen className="h-4 w-4" />
+            ) : (
+              <Folder className="h-4 w-4" />
+            )}
+            <span className="truncate">{folder.name}</span>
+          </Button>
+          <ShareFolderDialog
+            folderId={folder.id}
+            isPublic={folder.is_public}
+            onTogglePublic={fetchFolders}
+          />
+        </div>
       ))}
     </div>
   );
