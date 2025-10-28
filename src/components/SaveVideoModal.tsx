@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Loader2, Sparkles, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface SaveVideoModalProps {
   open: boolean;
@@ -16,66 +16,52 @@ interface SaveVideoModalProps {
   onSuccess?: () => void;
 }
 
-interface Folder {
-  id: string;
-  name: string;
-}
-
 interface VideoMetadata {
   title: string;
   platform: string;
   thumbnail_url: string | null;
+  tags?: string[];
 }
 
 export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, onSuccess }: SaveVideoModalProps) {
   const { toast } = useToast();
+  const [step, setStep] = useState<'url' | 'details'>(initialUrl ? 'details' : 'url');
   const [loading, setLoading] = useState(false);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
-  const [newFolderName, setNewFolderName] = useState("");
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [tags, setTags] = useState("");
-  const [note, setNote] = useState("");
   const [url, setUrl] = useState("");
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
-  const [manualTitle, setManualTitle] = useState("");
+  
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [customFolderName, setCustomFolderName] = useState("");
+  const [suggestedFolders, setSuggestedFolders] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  
+  const [tags, setTags] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     if (open) {
       setUrl(initialUrl);
-      fetchFolders();
       if (initialUrl && initialUrl.trim()) {
+        setStep('details');
         fetchMetadata(initialUrl);
+      } else {
+        setStep('url');
       }
     } else {
-      // Reset on close
+      // Reset
+      setStep('url');
       setUrl("");
       setMetadata(null);
-      setManualTitle("");
       setTags("");
       setNote("");
       setSelectedFolder("");
+      setCustomFolderName("");
+      setSuggestedFolders([]);
     }
   }, [open, initialUrl]);
 
-  const fetchFolders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("folders")
-        .select("id, name")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setFolders(data || []);
-    } catch (error: any) {
-      console.error("Error fetching folders:", error);
-    }
-  };
-
   const fetchMetadata = async (videoUrl: string) => {
-    if (!videoUrl || !videoUrl.trim()) return;
-    
     setFetchingMetadata(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-metadata", {
@@ -85,15 +71,17 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
       if (error) throw error;
       setMetadata(data.metadata);
       
-      // Auto-populate tags if available
       if (data.metadata.tags && data.metadata.tags.length > 0) {
         setTags(data.metadata.tags.join(", "));
       }
+      
+      // Get AI folder suggestions
+      getSuggestedFolders(data.metadata.title, data.metadata.tags || []);
     } catch (error: any) {
       console.error("Error fetching metadata:", error);
       toast({
         title: "Could not fetch video details",
-        description: "You can still save it manually",
+        description: "You can still enter them manually",
         variant: "destructive",
       });
     } finally {
@@ -101,68 +89,78 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
     }
   };
 
-  const handleFetchMetadata = () => {
-    if (url && url.trim()) {
-      fetchMetadata(url);
-    }
-  };
-
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
-
+  const getSuggestedFolders = async (title: string, videoTags: string[]) => {
+    setLoadingSuggestions(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-folder", {
-        body: { name: newFolderName },
+      const { data, error } = await supabase.functions.invoke("suggest-folders", {
+        body: { title, tags: videoTags },
       });
 
       if (error) throw error;
-      
-      setFolders([...folders, data.folder]);
-      setSelectedFolder(data.folder.id);
-      setNewFolderName("");
-      setShowNewFolder(false);
-      
-      toast({ title: "Folder created!" });
+      setSuggestedFolders(data.suggestions || []);
     } catch (error: any) {
-      toast({
-        title: "Error creating folder",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Error getting folder suggestions:", error);
+      setSuggestedFolders(['General', 'Entertainment', 'Educational', 'Music', 'Other']);
+    } finally {
+      setLoadingSuggestions(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!url || !url.trim()) {
-      toast({
-        title: "URL required",
-        description: "Please enter a video URL",
-        variant: "destructive",
-      });
+  const handleContinueFromUrl = () => {
+    if (!url.trim()) {
+      toast({ title: "Please enter a video URL", variant: "destructive" });
       return;
     }
+    setStep('details');
+    fetchMetadata(url);
+  };
 
-    const title = metadata?.title || manualTitle;
-    if (!title || !title.trim()) {
-      toast({
-        title: "Title required",
-        description: "Please enter a title for the video",
-        variant: "destructive",
-      });
+  const handleSave = async () => {
+    if (!metadata?.title) {
+      toast({ title: "Video title is required", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
       const tagsArray = tags.split(",").map(t => t.trim()).filter(t => t);
+      
+      let folderId = null;
+      
+      // Create folder if custom name is provided
+      if (customFolderName.trim()) {
+        const { data: folderData, error: folderError } = await supabase.functions.invoke("create-folder", {
+          body: { name: customFolderName.trim() },
+        });
+        if (folderError) throw folderError;
+        folderId = folderData.folder.id;
+      } else if (selectedFolder) {
+        // Check if selected folder exists, if not create it
+        const { data: existingFolders } = await supabase
+          .from("folders")
+          .select("id, name")
+          .eq("name", selectedFolder)
+          .maybeSingle();
+        
+        if (existingFolders) {
+          folderId = existingFolders.id;
+        } else {
+          // Create the suggested folder
+          const { data: folderData, error: folderError } = await supabase.functions.invoke("create-folder", {
+            body: { name: selectedFolder },
+          });
+          if (folderError) throw folderError;
+          folderId = folderData.folder.id;
+        }
+      }
 
       const { error } = await supabase.functions.invoke("save-video", {
         body: {
           url: url.trim(),
-          title: title.trim(),
-          platform: metadata?.platform || "unknown",
-          thumbnail_url: metadata?.thumbnail_url || null,
-          folder_id: selectedFolder || null,
+          title: metadata.title.trim(),
+          platform: metadata.platform || "unknown",
+          thumbnail_url: metadata.thumbnail_url || null,
+          folder_id: folderId,
           tags: tagsArray,
           note: note || null,
         },
@@ -170,7 +168,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
 
       if (error) throw error;
 
-      toast({ title: "Video saved successfully! ✅" });
+      toast({ title: "Video saved! ✨" });
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (error: any) {
@@ -186,136 +184,151 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Save to Vaultly</DialogTitle>
-          <DialogDescription>
-            {fetchingMetadata ? "Fetching video details..." : "Organize and save this video"}
-          </DialogDescription>
+          <DialogTitle className="text-2xl">
+            {step === 'url' ? 'Add Video URL' : 'Organize Your Video'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-          <div className="space-y-2">
-            <Label htmlFor="video-url">Video URL</Label>
-            <div className="flex gap-2">
+        {step === 'url' ? (
+          <div className="space-y-6 py-4">
+            <div className="space-y-3">
+              <Label htmlFor="video-url" className="text-base">Paste your video link</Label>
               <Input
                 id="video-url"
-                placeholder="Paste video URL here..."
+                placeholder="https://youtube.com/watch?v=..."
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                className="h-12 text-base"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleContinueFromUrl()}
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleFetchMetadata}
-                disabled={fetchingMetadata || !url.trim()}
-              >
-                {fetchingMetadata ? "Loading..." : "Fetch"}
-              </Button>
             </div>
+            <Button 
+              onClick={handleContinueFromUrl} 
+              className="w-full h-12"
+              size="lg"
+            >
+              Continue
+            </Button>
           </div>
-
-          {metadata?.thumbnail_url && (
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-              <img 
-                src={metadata.thumbnail_url} 
-                alt={metadata.title} 
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-
-          {metadata ? (
-            <div>
-              <p className="font-medium text-sm">{metadata.title}</p>
-              <p className="text-xs text-muted-foreground capitalize">{metadata.platform}</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="manual-title">Title</Label>
-              <Input
-                id="manual-title"
-                placeholder="Enter video title manually"
-                value={manualTitle}
-                onChange={(e) => setManualTitle(e.target.value)}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label>Folder</Label>
-            {!showNewFolder ? (
-              <div className="flex gap-2">
-                <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select folder (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {folders.map((folder) => (
-                      <SelectItem key={folder.id} value={folder.id}>
-                        {folder.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setShowNewFolder(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+        ) : (
+          <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            {fetchingMetadata ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground">Fetching video details...</p>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="New folder name"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                />
-                <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
-                  Create
-                </Button>
-                <Button variant="ghost" onClick={() => setShowNewFolder(false)}>
-                  Cancel
-                </Button>
-              </div>
+              <>
+                {metadata?.thumbnail_url && (
+                  <div className="aspect-video rounded-xl overflow-hidden shadow-lg">
+                    <img 
+                      src={metadata.thumbnail_url} 
+                      alt={metadata.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                {metadata && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">{metadata.title}</h3>
+                    <Badge variant="secondary" className="capitalize">
+                      {metadata.platform}
+                    </Badge>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-base">Choose or Create Folder</Label>
+                    {loadingSuggestions && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                  </div>
+                  
+                  {suggestedFolders.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedFolders.map((folder) => (
+                        <Badge
+                          key={folder}
+                          variant={selectedFolder === folder ? "default" : "outline"}
+                          className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
+                          onClick={() => {
+                            setSelectedFolder(selectedFolder === folder ? "" : folder);
+                            setCustomFolderName("");
+                          }}
+                        >
+                          {selectedFolder === folder && <Check className="h-3 w-3 mr-1" />}
+                          {folder}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="relative">
+                    <Input
+                      placeholder="Or type a custom folder name..."
+                      value={customFolderName}
+                      onChange={(e) => {
+                        setCustomFolderName(e.target.value);
+                        if (e.target.value) setSelectedFolder("");
+                      }}
+                      className="pl-10"
+                    />
+                    <Sparkles className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="tags" className="text-base">Tags</Label>
+                  <Input
+                    id="tags"
+                    placeholder="recipe, cooking, dinner"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="note" className="text-base">Note (optional)</Label>
+                  <Textarea
+                    id="note"
+                    placeholder="Add any notes about this video..."
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setStep('url')}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={loading || fetchingMetadata}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Video'
+                    )}
+                  </Button>
+                </div>
+              </>
             )}
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags (comma-separated)</Label>
-            <Input
-              id="tags"
-              placeholder="recipe, cooking, dinner"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="note">Note (optional)</Label>
-            <Textarea
-              id="note"
-              placeholder="Add a note about this video..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-        </div>
-
-        <div className="pt-4 border-t mt-4">
-          <Button 
-            onClick={handleSave} 
-            disabled={loading || fetchingMetadata}
-            className="w-full"
-          >
-            {loading ? "Saving..." : "Save Video"}
-          </Button>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import VideoGrid from "@/components/VideoGrid";
@@ -10,7 +11,7 @@ import SaveVideoModal from "@/components/SaveVideoModal";
 import ClipboardBanner from "@/components/ClipboardBanner";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { useClipboardDetection } from "@/hooks/useClipboardDetection";
-import { Plus, LogOut, Settings, Video, Search, ChevronRight } from "lucide-react";
+import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -83,7 +84,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       {/* Clipboard Detection Banner */}
       {detectedUrl && (
         <ClipboardBanner
@@ -102,51 +103,66 @@ export default function Dashboard() {
       />
 
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Video className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Vaultly</h1>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
+              <Video className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+              Vaultly
+            </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
-              <Settings className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} className="rounded-full">
+              <Settings className="h-5 w-5" />
             </Button>
-            <Button variant="outline" size="icon" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={handleSignOut} className="rounded-full">
+              <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Hero Section */}
+        <div className="text-center space-y-4 py-8">
+          <h2 className="text-4xl font-bold">Your Video Vault</h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Save, organize, and discover your favorite videos in one beautiful place
+          </p>
+          <Button onClick={handleAddVideo} size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all">
+            <Plus className="h-5 w-5 mr-2" />
+            Add New Video
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Sidebar - Folders */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Folders</h2>
-                <CreateFolderDialog onSuccess={handleFolderCreated} />
-              </div>
-              <FolderList key={refreshFolders} />
+            <div className="sticky top-24">
+              <Card className="p-6 shadow-lg">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Folders</h3>
+                  <CreateFolderDialog onSuccess={handleFolderCreated} />
+                </div>
+                <FolderList key={refreshFolders} />
+              </Card>
             </div>
           </aside>
 
           {/* Main - Videos */}
-          <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Recent Videos</h2>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => navigate("/all-videos")}>
-                  See All
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-                <Button onClick={handleAddVideo}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Video
-                </Button>
+          <div className="lg:col-span-4 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold mb-1">Recent Videos</h3>
+                <p className="text-sm text-muted-foreground">Your latest saves</p>
               </div>
+              <Button variant="secondary" onClick={() => navigate("/all-videos")} className="gap-2">
+                View All
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
             <VideoGrid key={refreshVideos} />
           </div>
