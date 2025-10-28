@@ -41,15 +41,22 @@ serve(async (req) => {
           const oembedData = await oembedResponse.json();
           console.log('YouTube oEmbed data:', oembedData);
           
+          // Extract hashtags from title
+          const title = oembedData.title || 'Untitled';
+          const hashtagRegex = /#[\w]+/g;
+          const hashtags = title.match(hashtagRegex) || [];
+          const tags = hashtags.map((tag: string) => tag.substring(1)); // Remove # symbol
+          
           return new Response(
             JSON.stringify({
               success: true,
               metadata: {
-                title: oembedData.title || 'Untitled',
+                title,
                 platform,
                 thumbnail_url: oembedData.thumbnail_url || null,
                 uploader: oembedData.author_name || '',
                 description: '',
+                tags,
                 raw: { url, oembed: oembedData },
               },
             }),

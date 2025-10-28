@@ -84,6 +84,11 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
 
       if (error) throw error;
       setMetadata(data.metadata);
+      
+      // Auto-populate tags if available
+      if (data.metadata.tags && data.metadata.tags.length > 0) {
+        setTags(data.metadata.tags.join(", "));
+      }
     } catch (error: any) {
       console.error("Error fetching metadata:", error);
       toast({
@@ -181,7 +186,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Save to Vaultly</DialogTitle>
           <DialogDescription>
@@ -189,7 +194,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1 pr-2">
           <div className="space-y-2">
             <Label htmlFor="video-url">Video URL</Label>
             <div className="flex gap-2">
@@ -300,6 +305,9 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
             />
           </div>
 
+        </div>
+
+        <div className="pt-4 border-t mt-4">
           <Button 
             onClick={handleSave} 
             disabled={loading || fetchingMetadata}
