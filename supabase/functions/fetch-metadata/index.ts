@@ -12,6 +12,7 @@ serve(async (req) => {
 
   try {
     const { url } = await req.json();
+    console.log('Fetching metadata for URL:', url);
 
     if (!url) {
       throw new Error('URL is required');
@@ -29,8 +30,42 @@ serve(async (req) => {
       platform = 'facebook';
     }
 
-    // Fetch basic metadata (simplified for now)
-    // In production, you'd use platform-specific APIs or a metadata extraction service
+    // For YouTube, use oEmbed API (works for regular videos and Shorts)
+    if (platform === 'youtube') {
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+        console.log('Fetching YouTube oEmbed:', oembedUrl);
+        
+        const oembedResponse = await fetch(oembedUrl);
+        if (oembedResponse.ok) {
+          const oembedData = await oembedResponse.json();
+          console.log('YouTube oEmbed data:', oembedData);
+          
+          return new Response(
+            JSON.stringify({
+              success: true,
+              metadata: {
+                title: oembedData.title || 'Untitled',
+                platform,
+                thumbnail_url: oembedData.thumbnail_url || null,
+                uploader: oembedData.author_name || '',
+                description: '',
+                raw: { url, oembed: oembedData },
+              },
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+        console.log('oEmbed failed, falling back to HTML parsing');
+      } catch (oembedError) {
+        console.error('oEmbed error:', oembedError);
+      }
+    }
+
+    // Fallback: Fetch basic metadata via HTML parsing
+    console.log('Fetching HTML for metadata extraction');
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; VaultlyBot/1.0)',
@@ -47,6 +82,8 @@ serve(async (req) => {
     const title = titleMatch ? titleMatch[1] : 'Untitled';
     const description = descriptionMatch ? descriptionMatch[1] : '';
     const thumbnail_url = imageMatch ? imageMatch[1] : null;
+
+    console.log('Extracted metadata:', { title, platform, thumbnail_url });
 
     return new Response(
       JSON.stringify({
