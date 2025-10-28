@@ -10,7 +10,7 @@ import SaveVideoModal from "@/components/SaveVideoModal";
 import ClipboardBanner from "@/components/ClipboardBanner";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { useClipboardDetection } from "@/hooks/useClipboardDetection";
-import { Plus, LogOut, Settings, Video } from "lucide-react";
+import { Plus, LogOut, Settings, Video, Search, ChevronRight } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -136,11 +136,17 @@ export default function Dashboard() {
           {/* Main - Videos */}
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Your Videos</h2>
-              <Button onClick={handleAddVideo}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Video
-              </Button>
+              <h2 className="text-2xl font-semibold">Recent Videos</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => navigate("/all-videos")}>
+                  See All
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+                <Button onClick={handleAddVideo}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Video
+                </Button>
+              </div>
             </div>
             <VideoGrid key={refreshVideos} />
           </div>

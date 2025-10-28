@@ -71,6 +71,17 @@ serve(async (req) => {
                 suggestedFolderId = matchedFolder.id;
               }
             }
+          } else {
+            // No folders exist, create a default "Unsorted" folder
+            const { data: defaultFolder } = await supabaseClient
+              .from('folders')
+              .insert({ user_id: user.id, name: 'Unsorted' })
+              .select()
+              .single();
+            
+            if (defaultFolder) {
+              suggestedFolderId = defaultFolder.id;
+            }
           }
         }
       } catch (aiError) {
