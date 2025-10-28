@@ -8,7 +8,6 @@ import VideoGrid from "@/components/VideoGrid";
 import FolderList from "@/components/FolderList";
 import SaveVideoModal from "@/components/SaveVideoModal";
 import ClipboardBanner from "@/components/ClipboardBanner";
-import AISuggestions from "@/components/AISuggestions";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { useClipboardDetection } from "@/hooks/useClipboardDetection";
 import { Plus, LogOut, Settings, Video } from "lucide-react";
@@ -123,18 +122,14 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Folders & AI */}
-          <aside className="lg:col-span-1 space-y-6">
-            <div className="sticky top-4 space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Folders</h2>
-                  <CreateFolderDialog onSuccess={handleFolderCreated} />
-                </div>
-                <FolderList key={refreshFolders} />
+          {/* Sidebar - Folders */}
+          <aside className="lg:col-span-1">
+            <div className="sticky top-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Folders</h2>
+                <CreateFolderDialog onSuccess={handleFolderCreated} />
               </div>
-              
-              <AISuggestions />
+              <FolderList key={refreshFolders} />
             </div>
           </aside>
 

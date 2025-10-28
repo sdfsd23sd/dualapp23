@@ -34,6 +34,51 @@ serve(async (req) => {
       throw new Error('Missing required fields: url, title, platform');
     }
 
+    // Get AI folder suggestion if no folder selected
+    let suggestedFolderId = folder_id;
+    if (!folder_id) {
+      try {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (LOVABLE_API_KEY) {
+          const { data: folders } = await supabaseClient
+            .from('folders')
+            .select('id, name')
+            .eq('user_id', user.id);
+
+          if (folders && folders.length > 0) {
+            const folderNames = folders.map(f => f.name).join(', ');
+            
+            const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'google/gemini-2.5-flash',
+                messages: [{
+                  role: 'user',
+                  content: `Given video title: "${title}" and existing folders: ${folderNames}, which folder name best matches? Reply with ONLY the exact folder name, nothing else. If no good match, reply "none".`
+                }],
+              }),
+            });
+
+            if (aiResponse.ok) {
+              const aiData = await aiResponse.json();
+              const suggestion = aiData.choices?.[0]?.message?.content?.trim();
+              const matchedFolder = folders.find(f => f.name === suggestion);
+              if (matchedFolder) {
+                suggestedFolderId = matchedFolder.id;
+              }
+            }
+          }
+        }
+      } catch (aiError) {
+        console.error('AI suggestion error:', aiError);
+        // Continue without AI suggestion
+      }
+    }
+
     // Insert video
     const { data: video, error: insertError } = await supabaseClient
       .from('videos')
@@ -43,7 +88,7 @@ serve(async (req) => {
         title,
         platform,
         thumbnail_path: thumbnail_url || null,
-        folder_id: folder_id || null,
+        folder_id: suggestedFolderId || null,
         tags: tags || [],
         note: note || null,
         mood: mood || null,

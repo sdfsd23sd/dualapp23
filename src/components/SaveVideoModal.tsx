@@ -27,7 +27,7 @@ interface VideoMetadata {
   thumbnail_url: string | null;
 }
 
-export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: SaveVideoModalProps) {
+export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, onSuccess }: SaveVideoModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -36,15 +36,28 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [tags, setTags] = useState("");
   const [note, setNote] = useState("");
+  const [url, setUrl] = useState("");
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null);
   const [fetchingMetadata, setFetchingMetadata] = useState(false);
+  const [manualTitle, setManualTitle] = useState("");
 
   useEffect(() => {
     if (open) {
+      setUrl(initialUrl);
       fetchFolders();
-      fetchMetadata();
+      if (initialUrl && initialUrl.trim()) {
+        fetchMetadata(initialUrl);
+      }
+    } else {
+      // Reset on close
+      setUrl("");
+      setMetadata(null);
+      setManualTitle("");
+      setTags("");
+      setNote("");
+      setSelectedFolder("");
     }
-  }, [open]);
+  }, [open, initialUrl]);
 
   const fetchFolders = async () => {
     try {
@@ -60,11 +73,13 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
     }
   };
 
-  const fetchMetadata = async () => {
+  const fetchMetadata = async (videoUrl: string) => {
+    if (!videoUrl || !videoUrl.trim()) return;
+    
     setFetchingMetadata(true);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-metadata", {
-        body: { url },
+        body: { url: videoUrl },
       });
 
       if (error) throw error;
@@ -78,6 +93,12 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
       });
     } finally {
       setFetchingMetadata(false);
+    }
+  };
+
+  const handleFetchMetadata = () => {
+    if (url && url.trim()) {
+      fetchMetadata(url);
     }
   };
 
@@ -107,10 +128,20 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
   };
 
   const handleSave = async () => {
-    if (!metadata) {
+    if (!url || !url.trim()) {
       toast({
-        title: "Please wait",
-        description: "Still fetching video details...",
+        title: "URL required",
+        description: "Please enter a video URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const title = metadata?.title || manualTitle;
+    if (!title || !title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please enter a title for the video",
         variant: "destructive",
       });
       return;
@@ -122,10 +153,10 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
 
       const { error } = await supabase.functions.invoke("save-video", {
         body: {
-          url,
-          title: metadata.title,
-          platform: metadata.platform,
-          thumbnail_url: metadata.thumbnail_url,
+          url: url.trim(),
+          title: title.trim(),
+          platform: metadata?.platform || "unknown",
+          thumbnail_url: metadata?.thumbnail_url || null,
           folder_id: selectedFolder || null,
           tags: tagsArray,
           note: note || null,
@@ -159,6 +190,26 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="video-url">Video URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id="video-url"
+                placeholder="Paste video URL here..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleFetchMetadata}
+                disabled={fetchingMetadata || !url.trim()}
+              >
+                {fetchingMetadata ? "Loading..." : "Fetch"}
+              </Button>
+            </div>
+          </div>
+
           {metadata?.thumbnail_url && (
             <div className="aspect-video rounded-lg overflow-hidden bg-muted">
               <img 
@@ -169,10 +220,20 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
             </div>
           )}
 
-          {metadata && (
+          {metadata ? (
             <div>
               <p className="font-medium text-sm">{metadata.title}</p>
               <p className="text-xs text-muted-foreground capitalize">{metadata.platform}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="manual-title">Title</Label>
+              <Input
+                id="manual-title"
+                placeholder="Enter video title manually"
+                value={manualTitle}
+                onChange={(e) => setManualTitle(e.target.value)}
+              />
             </div>
           )}
 
@@ -241,7 +302,7 @@ export default function SaveVideoModal({ open, onOpenChange, url, onSuccess }: S
 
           <Button 
             onClick={handleSave} 
-            disabled={loading || fetchingMetadata || !metadata}
+            disabled={loading || fetchingMetadata}
             className="w-full"
           >
             {loading ? "Saving..." : "Save Video"}
