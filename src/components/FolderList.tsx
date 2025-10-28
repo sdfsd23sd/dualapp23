@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Folder, FolderOpen } from "lucide-react";
@@ -15,6 +16,7 @@ interface Folder {
 
 export default function FolderList() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function FolderList() {
               "flex-1 justify-start gap-2",
               selectedFolder === folder.id && "bg-accent"
             )}
-            onClick={() => setSelectedFolder(folder.id === selectedFolder ? null : folder.id)}
+            onClick={() => navigate(`/folder/${folder.id}`)}
           >
             {selectedFolder === folder.id ? (
               <FolderOpen className="h-4 w-4" />

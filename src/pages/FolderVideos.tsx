@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, ExternalLink, Edit, Filter } from "lucide-react";
+import { ArrowLeft, Search, ExternalLink, Edit } from "lucide-react";
 import EditVideoModal from "@/components/EditVideoModal";
 
 interface Video {
@@ -23,59 +22,72 @@ interface Video {
   created_at: string;
 }
 
-export default function AllVideos() {
+interface Folder {
+  id: string;
+  name: string;
+}
+
+export default function FolderVideos() {
+  const { folderId } = useParams<{ folderId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [folder, setFolder] = useState<Folder | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchVideos();
-  }, []);
+    if (folderId) {
+      fetchFolderAndVideos();
+    }
+  }, [folderId]);
 
   useEffect(() => {
-    let filtered = videos;
-    
-    // Apply platform filter
-    if (platformFilter !== "all") {
-      filtered = filtered.filter((video) => video.platform.toLowerCase() === platformFilter.toLowerCase());
-    }
-    
-    // Apply search query
-    if (searchQuery.trim() !== "") {
+    if (searchQuery.trim() === "") {
+      setFilteredVideos(videos);
+    } else {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
+      const filtered = videos.filter(
         (video) =>
           video.title.toLowerCase().includes(query) ||
-          video.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-          video.platform.toLowerCase().includes(query)
+          video.tags.some((tag) => tag.toLowerCase().includes(query))
       );
+      setFilteredVideos(filtered);
     }
-    
-    setFilteredVideos(filtered);
-  }, [searchQuery, platformFilter, videos]);
+  }, [searchQuery, videos]);
 
-  const fetchVideos = async () => {
+  const fetchFolderAndVideos = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch folder info
+      const { data: folderData, error: folderError } = await supabase
+        .from("folders")
+        .select("id, name")
+        .eq("id", folderId)
+        .single();
+
+      if (folderError) throw folderError;
+      setFolder(folderData);
+
+      // Fetch videos in folder
+      const { data: videosData, error: videosError } = await supabase
         .from("videos")
         .select("*")
+        .eq("folder_id", folderId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setVideos(data || []);
-      setFilteredVideos(data || []);
+      if (videosError) throw videosError;
+      setVideos(videosData || []);
+      setFilteredVideos(videosData || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching videos",
+        title: "Error loading folder",
         description: error.message,
         variant: "destructive",
       });
+      navigate("/dashboard");
     } finally {
       setLoading(false);
     }
@@ -108,38 +120,25 @@ export default function AllVideos() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-3xl font-bold">All Videos</h1>
+          <h1 className="text-3xl font-bold">{folder?.name || "Folder"}</h1>
         </div>
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        <div className="mb-6">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search videos by title, tags, or platform..."
+              placeholder="Search videos in this folder..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select value={platformFilter} onValueChange={setPlatformFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All platforms" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All platforms</SelectItem>
-              <SelectItem value="youtube">YouTube</SelectItem>
-              <SelectItem value="tiktok">TikTok</SelectItem>
-              <SelectItem value="instagram">Instagram</SelectItem>
-              <SelectItem value="facebook">Facebook</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {filteredVideos.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              {searchQuery ? "No videos found matching your search." : "No videos saved yet."}
+              {searchQuery ? "No videos found matching your search." : "No videos in this folder yet."}
             </p>
           </div>
         ) : (
@@ -210,7 +209,7 @@ export default function AllVideos() {
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         video={editingVideo}
-        onSuccess={fetchVideos}
+        onSuccess={fetchFolderAndVideos}
       />
     </div>
   );

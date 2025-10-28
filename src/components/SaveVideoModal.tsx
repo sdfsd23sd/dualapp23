@@ -34,6 +34,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
   const [selectedFolder, setSelectedFolder] = useState<string>("");
   const [customFolderName, setCustomFolderName] = useState("");
   const [suggestedFolders, setSuggestedFolders] = useState<string[]>([]);
+  const [existingFolders, setExistingFolders] = useState<Array<{id: string, name: string}>>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
   const [tags, setTags] = useState("");
@@ -92,6 +93,17 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
   const getSuggestedFolders = async (title: string, videoTags: string[]) => {
     setLoadingSuggestions(true);
     try {
+      // Fetch existing folders
+      const { data: foldersData, error: foldersError } = await supabase
+        .from("folders")
+        .select("id, name")
+        .order("created_at", { ascending: false });
+      
+      if (!foldersError && foldersData) {
+        setExistingFolders(foldersData);
+      }
+
+      // Get AI suggestions
       const { data, error } = await supabase.functions.invoke("suggest-folders", {
         body: { title, tags: videoTags },
       });
@@ -247,23 +259,49 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
                     {loadingSuggestions && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                   </div>
                   
+                  {existingFolders.length > 0 && (
+                    <>
+                      <p className="text-sm text-muted-foreground">Your folders:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {existingFolders.map((folder) => (
+                          <Badge
+                            key={folder.id}
+                            variant={selectedFolder === folder.name ? "default" : "outline"}
+                            className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
+                            onClick={() => {
+                              setSelectedFolder(selectedFolder === folder.name ? "" : folder.name);
+                              setCustomFolderName("");
+                            }}
+                          >
+                            {selectedFolder === folder.name && <Check className="h-3 w-3 mr-1" />}
+                            {folder.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  
                   {suggestedFolders.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {suggestedFolders.map((folder) => (
-                        <Badge
-                          key={folder}
-                          variant={selectedFolder === folder ? "default" : "outline"}
-                          className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
-                          onClick={() => {
-                            setSelectedFolder(selectedFolder === folder ? "" : folder);
-                            setCustomFolderName("");
-                          }}
-                        >
-                          {selectedFolder === folder && <Check className="h-3 w-3 mr-1" />}
-                          {folder}
-                        </Badge>
-                      ))}
-                    </div>
+                    <>
+                      <p className="text-sm text-muted-foreground">AI suggestions:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedFolders.map((folder) => (
+                          <Badge
+                            key={folder}
+                            variant={selectedFolder === folder ? "default" : "outline"}
+                            className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
+                            onClick={() => {
+                              setSelectedFolder(selectedFolder === folder ? "" : folder);
+                              setCustomFolderName("");
+                            }}
+                          >
+                            {selectedFolder === folder && <Check className="h-3 w-3 mr-1" />}
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            {folder}
+                          </Badge>
+                        ))}
+                      </div>
+                    </>
                   )}
                   
                   <div className="relative">
@@ -274,7 +312,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
                         setCustomFolderName(e.target.value);
                         if (e.target.value) setSelectedFolder("");
                       }}
-                      className="pl-10"
+                      className="pl-10 border-2"
                     />
                     <Sparkles className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
                   </div>

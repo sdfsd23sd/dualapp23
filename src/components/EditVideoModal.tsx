@@ -122,12 +122,12 @@ export default function EditVideoModal({ open, onOpenChange, video, onSuccess }:
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Folder</label>
-            <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+            <Select value={selectedFolder || "none"} onValueChange={(val) => setSelectedFolder(val === "none" ? "" : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select folder (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No folder</SelectItem>
+                <SelectItem value="none">No folder</SelectItem>
                 {folders.map((folder) => (
                   <SelectItem key={folder.id} value={folder.id}>
                     {folder.name}

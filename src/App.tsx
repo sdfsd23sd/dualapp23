@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import PublicProfile from "./pages/PublicProfile";
 import AllVideos from "./pages/AllVideos";
+import FolderVideos from "./pages/FolderVideos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/all-videos" element={<AllVideos />} />
+          <Route path="/folder/:folderId" element={<FolderVideos />} />
           <Route path="/:alias" element={<PublicProfile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
