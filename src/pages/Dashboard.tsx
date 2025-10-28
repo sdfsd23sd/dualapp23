@@ -9,6 +9,7 @@ import FolderList from "@/components/FolderList";
 import SaveVideoModal from "@/components/SaveVideoModal";
 import ClipboardBanner from "@/components/ClipboardBanner";
 import AISuggestions from "@/components/AISuggestions";
+import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { useClipboardDetection } from "@/hooks/useClipboardDetection";
 import { Plus, LogOut, Settings, Video } from "lucide-react";
 
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [clipboardEnabled, setClipboardEnabled] = useState(true);
   const { detectedUrl, dismissUrl } = useClipboardDetection(clipboardEnabled);
   const [refreshVideos, setRefreshVideos] = useState(0);
+  const [refreshFolders, setRefreshFolders] = useState(0);
 
   useEffect(() => {
     // Check authentication
@@ -67,6 +69,10 @@ export default function Dashboard() {
 
   const handleSaveSuccess = () => {
     setRefreshVideos(prev => prev + 1);
+  };
+
+  const handleFolderCreated = () => {
+    setRefreshFolders(prev => prev + 1);
   };
 
   if (loading) {
@@ -123,12 +129,9 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold">Folders</h2>
-                  <Button size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New
-                  </Button>
+                  <CreateFolderDialog onSuccess={handleFolderCreated} />
                 </div>
-                <FolderList />
+                <FolderList key={refreshFolders} />
               </div>
               
               <AISuggestions />
