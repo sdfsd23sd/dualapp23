@@ -77,7 +77,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
       }
       
       // Get AI folder suggestions
-      getSuggestedFolders(data.metadata.title, data.metadata.tags || []);
+      getSuggestedFolders(data.metadata.title, data.metadata.tags || [], data.metadata.description || '');
     } catch (error: any) {
       console.error("Error fetching metadata:", error);
       toast({
@@ -90,7 +90,7 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
     }
   };
 
-  const getSuggestedFolders = async (title: string, videoTags: string[]) => {
+  const getSuggestedFolders = async (title: string, videoTags: string[], description: string) => {
     setLoadingSuggestions(true);
     try {
       // Fetch existing folders
@@ -103,9 +103,9 @@ export default function SaveVideoModal({ open, onOpenChange, url: initialUrl, on
         setExistingFolders(foldersData);
       }
 
-      // Get AI suggestions
+      // Get AI suggestions with description
       const { data, error } = await supabase.functions.invoke("suggest-folders", {
-        body: { title, tags: videoTags },
+        body: { title, tags: videoTags, description },
       });
 
       if (error) throw error;

@@ -5,13 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
-import VideoGrid from "@/components/VideoGrid";
-import FolderList from "@/components/FolderList";
+import VideoGridWithDrag from "@/components/VideoGridWithDrag";
+import FolderListWithDrop from "@/components/FolderListWithDrop";
 import SaveVideoModal from "@/components/SaveVideoModal";
 import ClipboardBanner from "@/components/ClipboardBanner";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
 import { useClipboardDetection } from "@/hooks/useClipboardDetection";
 import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
+
+interface DraggedVideo {
+  id: string;
+  title: string;
+  folder_id: string | null;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -24,6 +30,7 @@ export default function Dashboard() {
   const { detectedUrl, dismissUrl } = useClipboardDetection(clipboardEnabled);
   const [refreshVideos, setRefreshVideos] = useState(0);
   const [refreshFolders, setRefreshFolders] = useState(0);
+  const [draggedVideo, setDraggedVideo] = useState<DraggedVideo | null>(null);
 
   useEffect(() => {
     // Check authentication
@@ -73,6 +80,15 @@ export default function Dashboard() {
 
   const handleFolderCreated = () => {
     setRefreshFolders(prev => prev + 1);
+  };
+
+  const handleDragStart = (video: DraggedVideo) => {
+    setDraggedVideo(video);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedVideo(null);
+    setRefreshVideos(prev => prev + 1);
   };
 
   if (loading) {
@@ -147,7 +163,12 @@ export default function Dashboard() {
                   <h3 className="text-lg font-semibold">Folders</h3>
                   <CreateFolderDialog onSuccess={handleFolderCreated} />
                 </div>
-                <FolderList key={refreshFolders} />
+                <FolderListWithDrop 
+                  key={refreshFolders} 
+                  draggedVideo={draggedVideo}
+                  onDrop={handleDragEnd}
+                  refreshTrigger={refreshFolders}
+                />
               </Card>
             </div>
           </aside>
@@ -164,7 +185,12 @@ export default function Dashboard() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <VideoGrid key={refreshVideos} />
+            <VideoGridWithDrag 
+              key={refreshVideos}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              refreshTrigger={refreshVideos}
+            />
           </div>
         </div>
       </main>

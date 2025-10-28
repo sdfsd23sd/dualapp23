@@ -11,26 +11,30 @@ serve(async (req) => {
   }
 
   try {
-    const { title, tags } = await req.json();
+    const { title, tags, description } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const prompt = `Based on this video information, suggest 5 specific folder names that would be good for organizing it:
+    const prompt = `Based on this video information, suggest 5 specific, meaningful folder names that would be good for organizing it:
     
 Title: ${title}
+Description: ${description || 'none'}
 Tags: ${tags?.join(', ') || 'none'}
 
 Requirements:
-- Be SPECIFIC (e.g., "Fast Food Recipes" not just "Food", "Workout Routines" not just "Fitness")
+- Analyze the CONTENT and TOPIC of the video carefully
+- Be VERY SPECIFIC based on the description (e.g., "Italian Pasta Recipes" not just "Food", "HIIT Cardio Workouts" not just "Fitness")
+- Use the video description as the PRIMARY source for understanding the content
 - Keep names short (2-4 words max)
-- Make them practical for organizing videos
+- Make them practical for organizing similar videos
+- Avoid generic names like "Entertainment", "General", "Videos"
 - Return ONLY a JSON array of strings, no other text
 
-Example output format:
-["Fast Food Recipes", "Quick Dinner Ideas", "Budget Cooking", "30-Min Meals", "Comfort Food"]`;
+Example for a cooking video about Italian pasta:
+["Italian Recipes", "Pasta Dishes", "Quick Dinners", "Mediterranean Cooking", "Homemade Pasta"]`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
