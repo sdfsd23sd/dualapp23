@@ -1,1 +1,13 @@
 project_id = "cqrvtaxjsurbcmkiowum"
+
+[functions.save-video]
+verify_jwt = true
+
+[functions.create-folder]
+verify_jwt = true
+
+[functions.fetch-metadata]
+verify_jwt = true
+
+[functions.ai-suggestions]
+verify_jwt = true
