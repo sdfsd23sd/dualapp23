@@ -81,20 +81,33 @@ export default function FolderListWithDrop({ draggedVideo, onDrop, refreshTrigge
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setDropTarget(null);
     }
-    
-    setDropTarget(null);
   };
 
-  const handleTouchEnd = (folderId: string) => {
+  const handleTouchEnd = (e: React.TouchEvent, folderId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (draggedVideo) {
+      console.log('Touch drop on folder:', folderId);
       handleDrop(folderId);
     }
   };
 
-  const handleMouseUp = (folderId: string) => {
+  const handleMouseUp = (e: React.MouseEvent, folderId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (draggedVideo) {
+      console.log('Mouse drop on folder:', folderId);
       handleDrop(folderId);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, folderId: string) => {
+    if (draggedVideo) {
+      e.preventDefault();
+      setDropTarget(folderId);
     }
   };
 
@@ -122,8 +135,9 @@ export default function FolderListWithDrop({ draggedVideo, onDrop, refreshTrigge
         <div 
           key={folder.id} 
           className="flex items-center gap-1"
-          onTouchEnd={() => handleTouchEnd(folder.id)}
-          onMouseUp={() => handleMouseUp(folder.id)}
+          onTouchStart={(e) => handleTouchStart(e, folder.id)}
+          onTouchEnd={(e) => handleTouchEnd(e, folder.id)}
+          onMouseUp={(e) => handleMouseUp(e, folder.id)}
           onMouseEnter={() => draggedVideo && setDropTarget(folder.id)}
           onMouseLeave={() => setDropTarget(null)}
         >

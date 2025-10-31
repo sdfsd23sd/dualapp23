@@ -83,6 +83,7 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
   };
 
   const handleTouchStart = (e: React.TouchEvent, video: Video) => {
+    e.preventDefault();
     longPressTimerRef.current = setTimeout(() => {
       setDraggingVideo(video.id);
       if (onDragStart) onDragStart(video);
@@ -90,25 +91,24 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-    }, 500); // 500ms long press
+    }, 300); // Reduced to 300ms for faster response
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
     
-    if (draggingVideo) {
-      setTimeout(() => {
-        setDraggingVideo(null);
-        if (onDragEnd) onDragEnd();
-      }, 100);
+    // Don't clear dragging state here - let the folder handle the drop
+    if (!draggingVideo && longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
     }
   };
 
-  const handleTouchMove = () => {
-    // Cancel long press if user moves finger
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Cancel long press if user moves finger before drag starts
     if (longPressTimerRef.current && !draggingVideo) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -116,27 +116,27 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
   };
 
   const handleMouseDown = (e: React.MouseEvent, video: Video) => {
+    e.preventDefault();
     longPressTimerRef.current = setTimeout(() => {
       setDraggingVideo(video.id);
       if (onDragStart) onDragStart(video);
-    }, 500);
+    }, 300);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
     
-    if (draggingVideo) {
-      setTimeout(() => {
-        setDraggingVideo(null);
-        if (onDragEnd) onDragEnd();
-      }, 100);
+    // Don't clear dragging state here - let the folder handle the drop
+    if (!draggingVideo && longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
     }
   };
 
-  const handleMouseMove = () => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (longPressTimerRef.current && !draggingVideo) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
