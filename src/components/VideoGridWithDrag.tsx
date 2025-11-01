@@ -77,13 +77,13 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
     setEditModalOpen(true);
   };
 
-  const handleVideoClick = (url: string) => {
+  const handleVideoClick = (e: React.MouseEvent | React.TouchEvent, url: string) => {
     if (draggingVideo) return; // Don't open video when dragging
+    e.stopPropagation();
     window.open(url, "_blank");
   };
 
   const handleTouchStart = (e: React.TouchEvent, video: Video) => {
-    e.preventDefault();
     longPressTimerRef.current = setTimeout(() => {
       setDraggingVideo(video.id);
       if (onDragStart) onDragStart(video);
@@ -91,19 +91,18 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-    }, 300); // Reduced to 300ms for faster response
+    }, 500); // 500ms for long press (drag), allows normal tap to work
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
+  const handleTouchEnd = (e: React.TouchEvent, url: string) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
-    }
-    
-    // Don't clear dragging state here - let the folder handle the drop
-    if (!draggingVideo && longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
+      
+      // If not dragging, it was a tap - open the video
+      if (!draggingVideo) {
+        handleVideoClick(e, url);
+      }
     }
   };
 
@@ -116,23 +115,21 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
   };
 
   const handleMouseDown = (e: React.MouseEvent, video: Video) => {
-    e.preventDefault();
     longPressTimerRef.current = setTimeout(() => {
       setDraggingVideo(video.id);
       if (onDragStart) onDragStart(video);
-    }, 300);
+    }, 500);
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleMouseUp = (e: React.MouseEvent, url: string) => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
-    }
-    
-    // Don't clear dragging state here - let the folder handle the drop
-    if (!draggingVideo && longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
+      
+      // If not dragging, it was a click - open the video
+      if (!draggingVideo) {
+        handleVideoClick(e, url);
+      }
     }
   };
 
@@ -204,12 +201,11 @@ export default function VideoGridWithDrag({ onDragStart, onDragEnd, refreshTrigg
                   ? "opacity-50 scale-95 shadow-2xl ring-4 ring-primary cursor-grabbing" 
                   : "hover:shadow-xl hover:-translate-y-1 cursor-pointer"
               }`}
-              onClick={() => handleVideoClick(video.url)}
               onTouchStart={(e) => handleTouchStart(e, video)}
-              onTouchEnd={handleTouchEnd}
+              onTouchEnd={(e) => handleTouchEnd(e, video.url)}
               onTouchMove={handleTouchMove}
               onMouseDown={(e) => handleMouseDown(e, video)}
-              onMouseUp={handleMouseUp}
+              onMouseUp={(e) => handleMouseUp(e, video.url)}
               onMouseMove={handleMouseMove}
             >
               <div className="aspect-video bg-muted flex items-center justify-center relative overflow-hidden">

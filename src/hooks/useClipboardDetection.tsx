@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Clipboard } from '@capacitor/clipboard';
+import { App } from '@capacitor/app';
 
 const SUPPORTED_DOMAINS = [
   'youtube.com',
@@ -20,7 +21,7 @@ export function useClipboardDetection(enabled: boolean = true) {
 
     let intervalId: NodeJS.Timeout;
     let lastCheckTime = 0;
-    const COOLDOWN = 5000; // 5 seconds cooldown
+    const COOLDOWN = 3000; // 3 seconds cooldown
 
     const checkClipboard = async () => {
       const now = Date.now();
@@ -46,11 +47,23 @@ export function useClipboardDetection(enabled: boolean = true) {
       }
     };
 
-    // Check clipboard every 2 seconds
-    intervalId = setInterval(checkClipboard, 2000);
+    // Check immediately when enabled
+    checkClipboard();
+    
+    // Check clipboard every 1 second for faster detection
+    intervalId = setInterval(checkClipboard, 1000);
+
+    // Listen for app state changes (when app comes to foreground)
+    const stateListener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        // Check clipboard immediately when app becomes active
+        checkClipboard();
+      }
+    });
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      stateListener.then(listener => listener.remove());
     };
   }, [enabled, lastChecked]);
 

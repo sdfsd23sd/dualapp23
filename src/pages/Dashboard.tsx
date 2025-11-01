@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import VideoGridWithDrag from "@/components/VideoGridWithDrag";
 import FolderListWithDrop from "@/components/FolderListWithDrop";
 import SaveVideoModal from "@/components/SaveVideoModal";
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [urlToSave, setUrlToSave] = useState("");
@@ -33,21 +34,24 @@ export default function Dashboard() {
   const [draggedVideo, setDraggedVideo] = useState<DraggedVideo | null>(null);
 
   useEffect(() => {
-    // Check authentication
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       if (!session) {
         navigate("/auth");
       } else {
-        setUser(session.user);
         setLoading(false);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       if (!session) {
         navigate("/auth");
       } else {
-        setUser(session.user);
         setLoading(false);
       }
     });
