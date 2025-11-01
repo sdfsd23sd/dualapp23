@@ -135,6 +135,40 @@ serve(async (req) => {
       if (captionMatch && captionMatch[1]) {
         description = captionMatch[1];
       }
+      
+      // Try to extract from JSON-LD script tags
+      const scriptMatch = html.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s);
+      if (scriptMatch) {
+        try {
+          const jsonData = JSON.parse(scriptMatch[1]);
+          if (jsonData.caption) description = jsonData.caption;
+          if (jsonData.name) title = jsonData.name;
+        } catch (e) {
+          console.error('Instagram JSON-LD parsing error:', e);
+        }
+      }
+      
+      // If still no data, return helpful fallback
+      if (title === 'Untitled' && !description && !thumbnail_url) {
+        console.log('Instagram blocked scraping, returning fallback');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            metadata: {
+              title: 'Instagram Reel',
+              platform: 'instagram',
+              thumbnail_url: null,
+              uploader: 'Instagram',
+              description: 'Instagram content (metadata extraction blocked by Instagram)',
+              tags: [],
+              raw: { url },
+            },
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     } else if (platform === 'facebook') {
       // Facebook video description
       const descMatch = html.match(/<meta name="description" content="([^"]+)"/);
