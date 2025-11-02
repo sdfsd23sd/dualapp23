@@ -45,12 +45,17 @@ public class OverlayWindowManager {
         urlText.setText(truncateUrl(url));
 
         saveButton.setOnClickListener(v -> {
-            Intent intent = new Intent(context, MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            intent.putExtra("clipboardUrl", currentUrl);
-            intent.putExtra("autoOpenSave", true);
-            context.startActivity(intent);
-            hideOverlay();
+            try {
+                Intent intent = new Intent(context, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                intent.putExtra("clipboardUrl", currentUrl);
+                intent.putExtra("autoOpenSave", true);
+                context.startActivity(intent);
+                hideOverlay();
+            } catch (Exception e) {
+                e.printStackTrace();
+                hideOverlay();
+            }
         });
 
         dismissButton.setOnClickListener(v -> hideOverlay());

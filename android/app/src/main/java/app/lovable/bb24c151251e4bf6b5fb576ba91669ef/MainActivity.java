@@ -21,17 +21,25 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void handleIntent(Intent intent) {
-        if (intent != null && intent.hasExtra("clipboardUrl")) {
+        if (intent == null) return;
+        
+        if (intent.hasExtra("clipboardUrl")) {
             String url = intent.getStringExtra("clipboardUrl");
             boolean autoOpen = intent.getBooleanExtra("autoOpenSave", false);
             
             if (autoOpen && url != null) {
-                // Notify the plugin
-                ClipboardMonitorPlugin plugin = (ClipboardMonitorPlugin) 
-                    getBridge().getPlugin("ClipboardMonitor").getInstance();
-                if (plugin != null) {
-                    plugin.notifySaveClicked(url);
-                }
+                // Wait for bridge to initialize before notifying
+                getBridge().getWebView().post(() -> {
+                    try {
+                        ClipboardMonitorPlugin plugin = (ClipboardMonitorPlugin) 
+                            getBridge().getPlugin("ClipboardMonitor").getInstance();
+                        if (plugin != null) {
+                            plugin.notifySaveClicked(url);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
             }
         }
     }

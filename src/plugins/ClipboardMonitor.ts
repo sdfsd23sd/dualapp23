@@ -1,4 +1,5 @@
 import { registerPlugin } from '@capacitor/core';
+import type { PluginListenerHandle } from '@capacitor/core';
 
 export interface ClipboardMonitorPlugin {
   startMonitoring(): Promise<void>;
@@ -8,11 +9,11 @@ export interface ClipboardMonitorPlugin {
   addListener(
     eventName: 'clipboardDetected',
     listenerFunc: (event: { url: string }) => void
-  ): Promise<any>;
+  ): Promise<PluginListenerHandle>;
   addListener(
     eventName: 'saveClicked',
     listenerFunc: (event: { url: string }) => void
-  ): Promise<any>;
+  ): Promise<PluginListenerHandle>;
   removeAllListeners(): Promise<void>;
 }
 

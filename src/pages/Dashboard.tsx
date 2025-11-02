@@ -9,6 +9,7 @@ import VideoGridWithDrag from "@/components/VideoGridWithDrag";
 import FolderListWithDrop from "@/components/FolderListWithDrop";
 import SaveVideoModal from "@/components/SaveVideoModal";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
+import PermissionSetup from "@/components/PermissionSetup";
 import ClipboardMonitor from "@/plugins/ClipboardMonitor";
 import { Capacitor } from "@capacitor/core";
 import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
@@ -30,7 +31,7 @@ export default function Dashboard() {
   const [refreshVideos, setRefreshVideos] = useState(0);
   const [refreshFolders, setRefreshFolders] = useState(0);
   const [draggedVideo, setDraggedVideo] = useState<DraggedVideo | null>(null);
-  const isNative = Capacitor.isNativePlatform();
+  const isAndroid = Capacitor.getPlatform() === 'android';
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -58,9 +59,11 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Initialize native clipboard monitoring
+  // Initialize native clipboard monitoring (Android only)
   useEffect(() => {
-    if (!isNative || !user) return;
+    if (!isAndroid || !user) return;
+
+    let isSubscribed = true;
 
     const initClipboardMonitoring = async () => {
       try {
@@ -70,10 +73,10 @@ export default function Dashboard() {
         if (!granted) {
           toast({
             title: "Permission Required",
-            description: "Vaultly needs permission to display overlays. Please enable it in the next screen.",
+            description: "Vaultly needs permission to display overlays. Please enable it in Settings.",
             duration: 5000,
           });
-          await ClipboardMonitor.requestOverlayPermission();
+          // Don't auto-request on mount, let user trigger it manually
           return;
         }
 
@@ -81,30 +84,38 @@ export default function Dashboard() {
         await ClipboardMonitor.startMonitoring();
 
         // Listen for save clicks from overlay
-        await ClipboardMonitor.addListener('saveClicked', (event) => {
-          setUrlToSave(event.url);
-          setSaveModalOpen(true);
-        });
+        if (isSubscribed) {
+          await ClipboardMonitor.addListener('saveClicked', (event) => {
+            setUrlToSave(event.url);
+            setSaveModalOpen(true);
+          });
 
-        toast({
-          title: "Clipboard Monitoring Active",
-          description: "Copy any video link and we'll detect it automatically!",
-        });
+          toast({
+            title: "Clipboard Monitoring Active",
+            description: "Copy any video link and we'll detect it automatically!",
+          });
+        }
 
       } catch (error) {
         console.error('Failed to initialize clipboard monitoring:', error);
+        toast({
+          title: "Clipboard Monitoring Failed",
+          description: "Unable to start clipboard monitoring. Please restart the app.",
+          variant: "destructive",
+        });
       }
     };
 
     initClipboardMonitoring();
 
     return () => {
-      if (isNative) {
-        ClipboardMonitor.stopMonitoring();
-        ClipboardMonitor.removeAllListeners();
+      isSubscribed = false;
+      if (isAndroid) {
+        ClipboardMonitor.stopMonitoring().catch(console.error);
+        ClipboardMonitor.removeAllListeners().catch(console.error);
       }
     };
-  }, [isNative, user, toast]);
+  }, [isAndroid, user, toast]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -176,6 +187,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Permission Setup Banner */}
+        <PermissionSetup />
+
         {/* Hero Section */}
         <div className="text-center space-y-4 py-8">
           <h2 className="text-4xl font-bold">Your Video Vault</h2>
