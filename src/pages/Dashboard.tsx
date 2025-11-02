@@ -8,9 +8,9 @@ import { User, Session } from "@supabase/supabase-js";
 import VideoGridWithDrag from "@/components/VideoGridWithDrag";
 import FolderListWithDrop from "@/components/FolderListWithDrop";
 import SaveVideoModal from "@/components/SaveVideoModal";
-import ClipboardBanner from "@/components/ClipboardBanner";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
-import { useClipboardDetection } from "@/hooks/useClipboardDetection";
+import ClipboardMonitor from "@/plugins/ClipboardMonitor";
+import { Capacitor } from "@capacitor/core";
 import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
 
 interface DraggedVideo {
@@ -27,11 +27,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [urlToSave, setUrlToSave] = useState("");
-  const [clipboardEnabled, setClipboardEnabled] = useState(true);
-  const { detectedUrl, dismissUrl } = useClipboardDetection(clipboardEnabled);
   const [refreshVideos, setRefreshVideos] = useState(0);
   const [refreshFolders, setRefreshFolders] = useState(0);
   const [draggedVideo, setDraggedVideo] = useState<DraggedVideo | null>(null);
+  const isNative = Capacitor.isNativePlatform();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -59,18 +58,58 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Initialize native clipboard monitoring
+  useEffect(() => {
+    if (!isNative || !user) return;
+
+    const initClipboardMonitoring = async () => {
+      try {
+        // Check overlay permission
+        const { granted } = await ClipboardMonitor.checkOverlayPermission();
+        
+        if (!granted) {
+          toast({
+            title: "Permission Required",
+            description: "Vaultly needs permission to display overlays. Please enable it in the next screen.",
+            duration: 5000,
+          });
+          await ClipboardMonitor.requestOverlayPermission();
+          return;
+        }
+
+        // Start monitoring
+        await ClipboardMonitor.startMonitoring();
+
+        // Listen for save clicks from overlay
+        await ClipboardMonitor.addListener('saveClicked', (event) => {
+          setUrlToSave(event.url);
+          setSaveModalOpen(true);
+        });
+
+        toast({
+          title: "Clipboard Monitoring Active",
+          description: "Copy any video link and we'll detect it automatically!",
+        });
+
+      } catch (error) {
+        console.error('Failed to initialize clipboard monitoring:', error);
+      }
+    };
+
+    initClipboardMonitoring();
+
+    return () => {
+      if (isNative) {
+        ClipboardMonitor.stopMonitoring();
+        ClipboardMonitor.removeAllListeners();
+      }
+    };
+  }, [isNative, user, toast]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast({ title: "Signed out successfully" });
     navigate("/");
-  };
-
-  const handleSaveFromClipboard = () => {
-    if (detectedUrl) {
-      setUrlToSave(detectedUrl);
-      setSaveModalOpen(true);
-      dismissUrl();
-    }
   };
 
   const handleAddVideo = () => {
@@ -105,15 +144,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
-      {/* Clipboard Detection Banner */}
-      {detectedUrl && (
-        <ClipboardBanner
-          url={detectedUrl}
-          onSave={handleSaveFromClipboard}
-          onDismiss={dismissUrl}
-        />
-      )}
-
       {/* Save Video Modal */}
       <SaveVideoModal
         open={saveModalOpen}
