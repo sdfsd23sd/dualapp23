@@ -11,9 +11,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.provider.Settings;
+import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 public class ClipboardMonitorService extends Service {
+    private static final String TAG = "ClipboardMonitorService";
     private static final String CHANNEL_ID = "ClipboardMonitorChannel";
     private static final int NOTIFICATION_ID = 1;
     private ClipboardManager clipboardManager;
@@ -29,29 +32,50 @@ public class ClipboardMonitorService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        overlayManager = new OverlayWindowManager(this);
+        Log.d(TAG, "Service onCreate");
         
-        createNotificationChannel();
-        startForeground(NOTIFICATION_ID, createNotification());
-        
-        clipboardManager.addPrimaryClipChangedListener(clipListener);
+        try {
+            clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            overlayManager = new OverlayWindowManager(this);
+            
+            createNotificationChannel();
+            startForeground(NOTIFICATION_ID, createNotification());
+            
+            clipboardManager.addPrimaryClipChangedListener(clipListener);
+            Log.d(TAG, "Clipboard listener registered successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate", e);
+            stopSelf();
+        }
     }
 
     private final ClipboardManager.OnPrimaryClipChangedListener clipListener = 
         new ClipboardManager.OnPrimaryClipChangedListener() {
             @Override
             public void onPrimaryClipChanged() {
-                ClipData clipData = clipboardManager.getPrimaryClip();
-                if (clipData != null && clipData.getItemCount() > 0) {
-                    CharSequence text = clipData.getItemAt(0).getText();
-                    if (text != null) {
-                        String clipText = text.toString();
-                        if (!clipText.equals(lastClipboardText) && isSupportedVideoUrl(clipText)) {
-                            lastClipboardText = clipText;
-                            overlayManager.showOverlay(clipText);
+                try {
+                    // Check if we have overlay permission before proceeding
+                    if (!Settings.canDrawOverlays(ClipboardMonitorService.this)) {
+                        Log.w(TAG, "Overlay permission not granted, cannot show overlay");
+                        return;
+                    }
+
+                    ClipData clipData = clipboardManager.getPrimaryClip();
+                    if (clipData != null && clipData.getItemCount() > 0) {
+                        CharSequence text = clipData.getItemAt(0).getText();
+                        if (text != null) {
+                            String clipText = text.toString();
+                            Log.d(TAG, "Clipboard changed: " + clipText);
+                            
+                            if (!clipText.equals(lastClipboardText) && isSupportedVideoUrl(clipText)) {
+                                lastClipboardText = clipText;
+                                Log.d(TAG, "Supported video URL detected, showing overlay");
+                                overlayManager.showOverlay(clipText);
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error handling clipboard change", e);
                 }
             }
         };
@@ -97,6 +121,15 @@ public class ClipboardMonitorService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand called");
+        
+        // Check permission again on start
+        if (!Settings.canDrawOverlays(this)) {
+            Log.e(TAG, "Overlay permission not granted on service start");
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        
         return START_STICKY;
     }
 

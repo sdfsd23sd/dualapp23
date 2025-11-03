@@ -82,12 +82,14 @@ export default function Dashboard() {
           return;
         }
 
-        // Start monitoring
+        // Start monitoring - this will throw an error if it fails
         await ClipboardMonitor.startMonitoring();
+        console.log('Clipboard monitoring started successfully');
 
         // Listen for save clicks from overlay
         if (isSubscribed) {
           await ClipboardMonitor.addListener('saveClicked', (event) => {
+            console.log('Save clicked event received:', event);
             if (event?.url) {
               setUrlToSave(event.url);
               setSaveModalOpen(true);
@@ -100,10 +102,16 @@ export default function Dashboard() {
           });
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('Clipboard monitoring initialization error:', error);
-        // Silently fail if native plugin isn't ready yet
-        // The PermissionSetup component will guide the user
+        // Only show error if it's a real failure (not permission)
+        if (error?.message && !error.message.includes('permission')) {
+          toast({
+            title: "Clipboard Monitoring Error",
+            description: error.message || "Please check app permissions in Settings.",
+            variant: "destructive",
+          });
+        }
       }
     };
 
