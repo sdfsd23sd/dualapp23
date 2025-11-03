@@ -30,14 +30,21 @@ serve(async (req) => {
       platform = 'facebook';
     }
 
-    // Fetch HTML for metadata extraction
+    // Fetch HTML for metadata extraction with enhanced headers
     console.log('Fetching HTML for metadata extraction');
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': 'https://www.google.com/',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0',
       },
     });
 
@@ -136,6 +143,24 @@ serve(async (req) => {
         description = captionMatch[1];
       }
       
+      // Try to extract from shared data
+      const sharedDataMatch = html.match(/window\._sharedData\s*=\s*({.+?});<\/script>/);
+      if (sharedDataMatch) {
+        try {
+          const sharedData = JSON.parse(sharedDataMatch[1]);
+          const media = sharedData?.entry_data?.PostPage?.[0]?.graphql?.shortcode_media;
+          if (media) {
+            if (media.edge_media_to_caption?.edges?.[0]?.node?.text) {
+              description = media.edge_media_to_caption.edges[0].node.text;
+            }
+            if (media.display_url) thumbnail_url = media.display_url;
+            if (media.owner?.username) uploader = media.owner.username;
+          }
+        } catch (e) {
+          console.error('Instagram shared data parsing error:', e);
+        }
+      }
+      
       // Try to extract from JSON-LD script tags
       const scriptMatch = html.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s);
       if (scriptMatch) {
@@ -143,37 +168,42 @@ serve(async (req) => {
           const jsonData = JSON.parse(scriptMatch[1]);
           if (jsonData.caption) description = jsonData.caption;
           if (jsonData.name) title = jsonData.name;
+          if (jsonData.thumbnailUrl) thumbnail_url = jsonData.thumbnailUrl;
         } catch (e) {
           console.error('Instagram JSON-LD parsing error:', e);
         }
       }
       
-      // If still no data, return helpful fallback
-      if (title === 'Untitled' && !description && !thumbnail_url) {
-        console.log('Instagram blocked scraping, returning fallback');
-        return new Response(
-          JSON.stringify({
-            success: true,
-            metadata: {
-              title: 'Instagram Reel',
-              platform: 'instagram',
-              thumbnail_url: null,
-              uploader: 'Instagram',
-              description: 'Instagram content (metadata extraction blocked by Instagram)',
-              tags: [],
-              raw: { url },
-            },
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
+      // Extract from meta tags more aggressively
+      if (!thumbnail_url) {
+        const imgMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+        if (imgMatch) thumbnail_url = imgMatch[1];
+      }
+      
+      if (!uploader) {
+        uploader = 'Instagram';
       }
     } else if (platform === 'facebook') {
       // Facebook video description
       const descMatch = html.match(/<meta name="description" content="([^"]+)"/);
       if (descMatch && descMatch[1]) {
         description = descMatch[1];
+      }
+      
+      // Try to get title from page
+      const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].replace(' | Facebook', '').trim();
+      }
+      
+      // Extract thumbnail more aggressively
+      if (!thumbnail_url) {
+        const imgMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+        if (imgMatch) thumbnail_url = imgMatch[1];
+      }
+      
+      if (!uploader) {
+        uploader = 'Facebook';
       }
     }
 

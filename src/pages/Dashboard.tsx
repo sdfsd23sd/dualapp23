@@ -67,16 +67,18 @@ export default function Dashboard() {
 
     const initClipboardMonitoring = async () => {
       try {
+        // Check if plugin is available
+        if (!ClipboardMonitor) {
+          console.log('ClipboardMonitor plugin not available');
+          return;
+        }
+
         // Check overlay permission
-        const { granted } = await ClipboardMonitor.checkOverlayPermission();
+        const permissionResult = await ClipboardMonitor.checkOverlayPermission();
         
-        if (!granted) {
-          toast({
-            title: "Permission Required",
-            description: "Vaultly needs permission to display overlays. Please enable it in Settings.",
-            duration: 5000,
-          });
-          // Don't auto-request on mount, let user trigger it manually
+        if (!permissionResult?.granted) {
+          console.log('Overlay permission not granted');
+          // Don't show error, let PermissionSetup component handle it
           return;
         }
 
@@ -86,8 +88,10 @@ export default function Dashboard() {
         // Listen for save clicks from overlay
         if (isSubscribed) {
           await ClipboardMonitor.addListener('saveClicked', (event) => {
-            setUrlToSave(event.url);
-            setSaveModalOpen(true);
+            if (event?.url) {
+              setUrlToSave(event.url);
+              setSaveModalOpen(true);
+            }
           });
 
           toast({
@@ -97,12 +101,9 @@ export default function Dashboard() {
         }
 
       } catch (error) {
-        console.error('Failed to initialize clipboard monitoring:', error);
-        toast({
-          title: "Clipboard Monitoring Failed",
-          description: "Unable to start clipboard monitoring. Please restart the app.",
-          variant: "destructive",
-        });
+        console.error('Clipboard monitoring initialization error:', error);
+        // Silently fail if native plugin isn't ready yet
+        // The PermissionSetup component will guide the user
       }
     };
 

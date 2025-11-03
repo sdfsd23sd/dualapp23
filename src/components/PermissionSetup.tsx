@@ -34,6 +34,15 @@ export default function PermissionSetup() {
 
   const requestPermission = async () => {
     try {
+      if (!ClipboardMonitor) {
+        toast({
+          title: "Feature Unavailable",
+          description: "Clipboard monitoring is only available on Android devices.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       await ClipboardMonitor.requestOverlayPermission();
       toast({
         title: "Grant Permission",
@@ -41,10 +50,12 @@ export default function PermissionSetup() {
         duration: 7000,
       });
     } catch (error) {
+      console.error('Permission request error:', error);
       toast({
         title: "Permission Error",
-        description: "Unable to open permission settings.",
+        description: "Unable to open permission settings. Try going to Settings > Apps > Vaultly > Display over other apps.",
         variant: "destructive",
+        duration: 8000,
       });
     }
   };
