@@ -74,18 +74,16 @@ public class ClipboardMonitorPlugin extends Plugin {
     @PluginMethod
     public void requestOverlayPermission(PluginCall call) {
         try {
-            if (getActivity() == null) {
-                Log.e(TAG, "Activity is null, cannot request permission");
-                call.reject("Activity not available");
-                return;
-            }
-
             Log.d(TAG, "Requesting overlay permission");
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getContext().getPackageName()));
+            
+            // Use context instead of activity since we're in a plugin
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getActivity().startActivity(intent);
+            getContext().startActivity(intent);
+            
             call.resolve();
+            Log.d(TAG, "Permission settings opened successfully");
         } catch (Exception e) {
             Log.e(TAG, "Failed to request overlay permission", e);
             call.reject("Failed to open permission settings: " + e.getMessage());

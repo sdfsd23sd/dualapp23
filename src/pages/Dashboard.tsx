@@ -67,29 +67,25 @@ export default function Dashboard() {
 
     const initClipboardMonitoring = async () => {
       try {
-        // Check if plugin is available
-        if (!ClipboardMonitor) {
-          console.log('ClipboardMonitor plugin not available');
-          return;
-        }
-
-        // Check overlay permission
+        console.log('Starting clipboard monitoring initialization');
+        
+        // Check overlay permission first
         const permissionResult = await ClipboardMonitor.checkOverlayPermission();
+        console.log('Permission check result:', permissionResult);
         
         if (!permissionResult?.granted) {
-          console.log('Overlay permission not granted');
-          // Don't show error, let PermissionSetup component handle it
+          console.log('Overlay permission not granted, waiting for user to enable it');
           return;
         }
 
-        // Start monitoring - this will throw an error if it fails
+        // Start monitoring
         await ClipboardMonitor.startMonitoring();
-        console.log('Clipboard monitoring started successfully');
+        console.log('✅ Clipboard monitoring service started successfully');
 
         // Listen for save clicks from overlay
         if (isSubscribed) {
           await ClipboardMonitor.addListener('saveClicked', (event) => {
-            console.log('Save clicked event received:', event);
+            console.log('💾 Save clicked event received:', event);
             if (event?.url) {
               setUrlToSave(event.url);
               setSaveModalOpen(true);
@@ -103,12 +99,12 @@ export default function Dashboard() {
         }
 
       } catch (error: any) {
-        console.error('Clipboard monitoring initialization error:', error);
-        // Only show error if it's a real failure (not permission)
-        if (error?.message && !error.message.includes('permission')) {
+        console.error('❌ Clipboard monitoring error:', error);
+        // Only show error for real failures
+        if (!error?.message?.includes('permission') && !error?.message?.includes('not granted')) {
           toast({
             title: "Clipboard Monitoring Error",
-            description: error.message || "Please check app permissions in Settings.",
+            description: error.message || "Please restart the app and try again.",
             variant: "destructive",
           });
         }
