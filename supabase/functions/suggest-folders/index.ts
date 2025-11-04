@@ -75,7 +75,12 @@ NOW ANALYZE THE VIDEO ABOVE AND RETURN ONLY THE JSON ARRAY:`;
     }
 
     const data = await response.json();
-    const suggestions = JSON.parse(data.choices[0].message.content);
+    let content = data.choices[0].message.content;
+    
+    // Remove markdown code blocks if present
+    content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    const suggestions = JSON.parse(content);
 
     return new Response(
       JSON.stringify({ suggestions }),

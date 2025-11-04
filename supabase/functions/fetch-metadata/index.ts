@@ -32,21 +32,25 @@ serve(async (req) => {
 
     // Fetch HTML for metadata extraction with enhanced headers
     console.log('Fetching HTML for metadata extraction');
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'max-age=0',
-      },
-    });
+    
+    // Use different headers for different platforms
+    const headers: Record<string, string> = {
+      'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+    };
+    
+    // Instagram and Facebook work better with bot user agents
+    if (platform === 'instagram' || platform === 'facebook') {
+      headers['User-Agent'] = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+    } else {
+      headers['User-Agent'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+    }
+    
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.log(`Initial fetch failed with status ${response.status}, attempting fallback`);
@@ -137,74 +141,104 @@ serve(async (req) => {
         }
       }
     } else if (platform === 'instagram') {
-      // Instagram uses og:description which contains caption
-      const captionMatch = html.match(/<meta property="og:description" content="([^"]+)"/);
-      if (captionMatch && captionMatch[1]) {
-        description = captionMatch[1];
+      console.log('Processing Instagram metadata...');
+      
+      // Instagram og:description contains the caption
+      const ogDescMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
+      if (ogDescMatch && ogDescMatch[1]) {
+        description = ogDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        console.log('Found Instagram description:', description.substring(0, 100));
       }
       
-      // Try to extract from shared data
-      const sharedDataMatch = html.match(/window\._sharedData\s*=\s*({.+?});<\/script>/);
-      if (sharedDataMatch) {
-        try {
-          const sharedData = JSON.parse(sharedDataMatch[1]);
-          const media = sharedData?.entry_data?.PostPage?.[0]?.graphql?.shortcode_media;
-          if (media) {
-            if (media.edge_media_to_caption?.edges?.[0]?.node?.text) {
-              description = media.edge_media_to_caption.edges[0].node.text;
-            }
-            if (media.display_url) thumbnail_url = media.display_url;
-            if (media.owner?.username) uploader = media.owner.username;
+      // Try alternate description patterns
+      if (!description) {
+        const altDescMatch = html.match(/<meta name="description" content="([^"]+)"/i);
+        if (altDescMatch && altDescMatch[1]) {
+          description = altDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        }
+      }
+      
+      // Extract thumbnail - Instagram uses og:image
+      const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
+      if (ogImageMatch && ogImageMatch[1]) {
+        thumbnail_url = ogImageMatch[1];
+        console.log('Found Instagram thumbnail');
+      }
+      
+      // Try alternate image patterns
+      if (!thumbnail_url) {
+        const altImgMatch = html.match(/<meta property="og:image:secure_url" content="([^"]+)"/i);
+        if (altImgMatch) thumbnail_url = altImgMatch[1];
+      }
+      
+      // Get title/uploader from og:title
+      const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
+      if (ogTitleMatch && ogTitleMatch[1]) {
+        const titleParts = ogTitleMatch[1].split('on Instagram:');
+        if (titleParts.length > 0) {
+          uploader = titleParts[0].trim().replace(/"/g, '');
+          if (titleParts.length > 1) {
+            title = titleParts[1].trim();
           }
-        } catch (e) {
-          console.error('Instagram shared data parsing error:', e);
         }
       }
       
-      // Try to extract from JSON-LD script tags
-      const scriptMatch = html.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s);
-      if (scriptMatch) {
-        try {
-          const jsonData = JSON.parse(scriptMatch[1]);
-          if (jsonData.caption) description = jsonData.caption;
-          if (jsonData.name) title = jsonData.name;
-          if (jsonData.thumbnailUrl) thumbnail_url = jsonData.thumbnailUrl;
-        } catch (e) {
-          console.error('Instagram JSON-LD parsing error:', e);
-        }
+      if (!uploader) uploader = 'Instagram';
+      if (!title || title === 'Instagram') {
+        title = description.substring(0, 50) || 'Instagram Video';
       }
       
-      // Extract from meta tags more aggressively
-      if (!thumbnail_url) {
-        const imgMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
-        if (imgMatch) thumbnail_url = imgMatch[1];
-      }
+      console.log('Instagram metadata extracted:', { title: title.substring(0, 50), uploader, hasThumb: !!thumbnail_url, hasDesc: !!description });
       
-      if (!uploader) {
-        uploader = 'Instagram';
-      }
     } else if (platform === 'facebook') {
-      // Facebook video description
-      const descMatch = html.match(/<meta name="description" content="([^"]+)"/);
-      if (descMatch && descMatch[1]) {
-        description = descMatch[1];
+      console.log('Processing Facebook metadata...');
+      
+      // Facebook og:description
+      const ogDescMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
+      if (ogDescMatch && ogDescMatch[1]) {
+        description = ogDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        console.log('Found Facebook description:', description.substring(0, 100));
       }
       
-      // Try to get title from page
-      const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-      if (titleMatch && titleMatch[1]) {
-        title = titleMatch[1].replace(' | Facebook', '').trim();
+      // Try alternate description
+      if (!description) {
+        const altDescMatch = html.match(/<meta name="description" content="([^"]+)"/i);
+        if (altDescMatch && altDescMatch[1]) {
+          description = altDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        }
       }
       
-      // Extract thumbnail more aggressively
+      // Facebook og:image for thumbnail
+      const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
+      if (ogImageMatch && ogImageMatch[1]) {
+        thumbnail_url = ogImageMatch[1];
+        console.log('Found Facebook thumbnail');
+      }
+      
+      // Try video thumbnail
       if (!thumbnail_url) {
-        const imgMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
-        if (imgMatch) thumbnail_url = imgMatch[1];
+        const videoThumbMatch = html.match(/<meta property="og:video:thumbnail" content="([^"]+)"/i);
+        if (videoThumbMatch) thumbnail_url = videoThumbMatch[1];
       }
       
-      if (!uploader) {
-        uploader = 'Facebook';
+      // Get better title from og:title
+      const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
+      if (ogTitleMatch && ogTitleMatch[1]) {
+        title = ogTitleMatch[1].replace(' | Facebook', '').replace(/&quot;/g, '"').trim();
       }
+      
+      // Try to extract uploader name
+      const uploaderMatch = html.match(/<meta property="og:site_name" content="([^"]+)"/i);
+      if (uploaderMatch && uploaderMatch[1]) {
+        uploader = uploaderMatch[1];
+      }
+      
+      if (!uploader) uploader = 'Facebook';
+      if (!title || title === 'Facebook') {
+        title = description.substring(0, 50) || 'Facebook Video';
+      }
+      
+      console.log('Facebook metadata extracted:', { title: title.substring(0, 50), uploader, hasThumb: !!thumbnail_url, hasDesc: !!description });
     }
 
     // Extract hashtags from title and description
