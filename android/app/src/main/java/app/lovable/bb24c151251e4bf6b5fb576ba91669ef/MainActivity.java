@@ -8,9 +8,14 @@ public class MainActivity extends BridgeActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        registerPlugin(ClipboardMonitorPlugin.class);
         super.onCreate(savedInstanceState);
         handleIntent(getIntent());
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        registerPlugin(ClipboardMonitorPlugin.class);
     }
 
     @Override

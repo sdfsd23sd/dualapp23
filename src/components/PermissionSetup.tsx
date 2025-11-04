@@ -34,21 +34,29 @@ export default function PermissionSetup() {
 
   const requestPermission = async () => {
     try {
-      console.log('Requesting overlay permission...');
+      console.log('🔐 Requesting overlay permission...');
+      
+      // Add small delay to ensure plugin is loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       await ClipboardMonitor.requestOverlayPermission();
       
-      console.log('✅ Permission dialog opened successfully');
+      console.log('✅ Permission settings opened successfully');
       toast({
         title: "Grant Permission",
         description: "Please enable 'Display over other apps' and return to Vaultly.",
         duration: 7000,
       });
     } catch (error: any) {
-      console.error('❌ Permission request error:', error);
+      console.error('❌ Permission request failed:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code
+      });
+      
       toast({
         title: "Permission Error",
-        description: error?.message || "Unable to open settings. Please go to Settings > Apps > Vaultly > Display over other apps manually.",
+        description: "Unable to open settings. Please manually go to Settings > Apps > Vaultly > Display over other apps.",
         variant: "destructive",
         duration: 8000,
       });

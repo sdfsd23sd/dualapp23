@@ -67,17 +67,23 @@ export default function Dashboard() {
 
     const initClipboardMonitoring = async () => {
       try {
-        console.log('Starting clipboard monitoring initialization');
+        console.log('🔍 Starting clipboard monitoring initialization');
+        
+        // Add small delay to ensure plugin is fully loaded
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log('✅ Plugin loaded, checking permission...');
         
         // Check overlay permission first
         const permissionResult = await ClipboardMonitor.checkOverlayPermission();
-        console.log('Permission check result:', permissionResult);
+        console.log('📋 Permission check result:', permissionResult);
         
         if (!permissionResult?.granted) {
-          console.log('Overlay permission not granted, waiting for user to enable it');
+          console.log('⏳ Overlay permission not granted, waiting for user to enable it');
           return;
         }
 
+        console.log('🚀 Starting monitoring service...');
         // Start monitoring
         await ClipboardMonitor.startMonitoring();
         console.log('✅ Clipboard monitoring service started successfully');
@@ -99,9 +105,17 @@ export default function Dashboard() {
         }
 
       } catch (error: any) {
-        console.error('❌ Clipboard monitoring error:', error);
-        // Only show error for real failures
-        if (!error?.message?.includes('permission') && !error?.message?.includes('not granted')) {
+        console.error('❌ Clipboard monitoring initialization failed:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          code: error?.code,
+          stack: error?.stack
+        });
+        
+        // Show error only for actual failures, not permission issues
+        if (!error?.message?.includes('permission') && 
+            !error?.message?.includes('not granted') &&
+            !error?.message?.includes('not implemented')) {
           toast({
             title: "Clipboard Monitoring Error",
             description: error.message || "Please restart the app and try again.",
