@@ -189,7 +189,7 @@ serve(async (req) => {
       // Extract thumbnail - Instagram uses og:image
       const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
       if (ogImageMatch && ogImageMatch[1]) {
-        thumbnail_url = ogImageMatch[1];
+        thumbnail_url = decodeHtmlEntities(ogImageMatch[1]);
         console.log('Found Instagram thumbnail');
       }
       
@@ -240,7 +240,7 @@ serve(async (req) => {
       // Facebook og:image for thumbnail
       const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/i);
       if (ogImageMatch && ogImageMatch[1]) {
-        thumbnail_url = ogImageMatch[1];
+        thumbnail_url = decodeHtmlEntities(ogImageMatch[1]);
         console.log('Found Facebook thumbnail');
       }
       
