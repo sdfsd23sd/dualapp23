@@ -83,6 +83,34 @@ serve(async (req) => {
     const html = await response.text();
     
     // Extract Open Graph and Twitter Card metadata
+    // Decode HTML entities
+    const decodeHtmlEntities = (text: string): string => {
+      // Decode numeric HTML entities (&#x1234; and &#1234;)
+      text = text.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => 
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      text = text.replace(/&#(\d+);/g, (match, dec) => 
+        String.fromCharCode(parseInt(dec, 10))
+      );
+      
+      // Decode named HTML entities
+      const entities: Record<string, string> = {
+        '&amp;': '&',
+        '&quot;': '"',
+        '&#x27;': "'",
+        '&apos;': "'",
+        '&lt;': '<',
+        '&gt;': '>',
+        '&nbsp;': ' ',
+      };
+      
+      for (const [entity, char] of Object.entries(entities)) {
+        text = text.replace(new RegExp(entity, 'g'), char);
+      }
+      
+      return text;
+    };
+    
     const extractMeta = (property: string): string => {
       const patterns = [
         new RegExp(`<meta property="${property}" content="([^"]+)"`, 'i'),
@@ -92,7 +120,7 @@ serve(async (req) => {
       
       for (const pattern of patterns) {
         const match = html.match(pattern);
-        if (match && match[1]) return match[1];
+        if (match && match[1]) return decodeHtmlEntities(match[1]);
       }
       return '';
     };
@@ -146,7 +174,7 @@ serve(async (req) => {
       // Instagram og:description contains the caption
       const ogDescMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
       if (ogDescMatch && ogDescMatch[1]) {
-        description = ogDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        description = decodeHtmlEntities(ogDescMatch[1]);
         console.log('Found Instagram description:', description.substring(0, 100));
       }
       
@@ -154,7 +182,7 @@ serve(async (req) => {
       if (!description) {
         const altDescMatch = html.match(/<meta name="description" content="([^"]+)"/i);
         if (altDescMatch && altDescMatch[1]) {
-          description = altDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+          description = decodeHtmlEntities(altDescMatch[1]);
         }
       }
       
@@ -174,7 +202,8 @@ serve(async (req) => {
       // Get title/uploader from og:title
       const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
       if (ogTitleMatch && ogTitleMatch[1]) {
-        const titleParts = ogTitleMatch[1].split('on Instagram:');
+        const decodedTitle = decodeHtmlEntities(ogTitleMatch[1]);
+        const titleParts = decodedTitle.split('on Instagram:');
         if (titleParts.length > 0) {
           uploader = titleParts[0].trim().replace(/"/g, '');
           if (titleParts.length > 1) {
@@ -196,7 +225,7 @@ serve(async (req) => {
       // Facebook og:description
       const ogDescMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
       if (ogDescMatch && ogDescMatch[1]) {
-        description = ogDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+        description = decodeHtmlEntities(ogDescMatch[1]);
         console.log('Found Facebook description:', description.substring(0, 100));
       }
       
@@ -204,7 +233,7 @@ serve(async (req) => {
       if (!description) {
         const altDescMatch = html.match(/<meta name="description" content="([^"]+)"/i);
         if (altDescMatch && altDescMatch[1]) {
-          description = altDescMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+          description = decodeHtmlEntities(altDescMatch[1]);
         }
       }
       
@@ -224,7 +253,7 @@ serve(async (req) => {
       // Get better title from og:title
       const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
       if (ogTitleMatch && ogTitleMatch[1]) {
-        title = ogTitleMatch[1].replace(' | Facebook', '').replace(/&quot;/g, '"').trim();
+        title = decodeHtmlEntities(ogTitleMatch[1]).replace(' | Facebook', '').trim();
       }
       
       // Try to extract uploader name
