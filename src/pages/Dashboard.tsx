@@ -12,6 +12,7 @@ import CreateFolderDialog from "@/components/CreateFolderDialog";
 import PermissionSetup from "@/components/PermissionSetup";
 import ClipboardMonitor from "@/plugins/ClipboardMonitor";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
 
 interface DraggedVideo {
@@ -64,6 +65,7 @@ export default function Dashboard() {
     if (!isAndroid || !user) return;
 
     let isSubscribed = true;
+    let appStateListener: any = null;
 
     const initClipboardMonitoring = async () => {
       try {
@@ -125,13 +127,28 @@ export default function Dashboard() {
       }
     };
 
+    // Listen for app state changes to re-initialize when coming to foreground
+    const setupAppListener = async () => {
+      appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
+        if (isActive && isSubscribed) {
+          console.log('📱 App became active, re-checking clipboard monitoring...');
+          // Re-initialize monitoring when app comes to foreground
+          await initClipboardMonitoring();
+        }
+      });
+    };
+
     initClipboardMonitoring();
+    setupAppListener();
 
     return () => {
       isSubscribed = false;
       if (isAndroid) {
         ClipboardMonitor.stopMonitoring().catch(console.error);
         ClipboardMonitor.removeAllListeners().catch(console.error);
+      }
+      if (appStateListener) {
+        appStateListener.then((listener: any) => listener.remove()).catch(console.error);
       }
     };
   }, [isAndroid, user, toast]);
