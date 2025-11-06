@@ -66,23 +66,19 @@ export default function Dashboard() {
 
     let isSubscribed = true;
     let appStateListener: any = null;
+    let permissionCheckInterval: any = null;
 
     const initClipboardMonitoring = async () => {
       try {
         console.log('🔍 Starting clipboard monitoring initialization');
         
-        // Add small delay to ensure plugin is fully loaded
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        console.log('✅ Plugin loaded, checking permission...');
-        
-        // Check overlay permission first
+        // Check overlay permission
         const permissionResult = await ClipboardMonitor.checkOverlayPermission();
         console.log('📋 Permission check result:', permissionResult);
         
         if (!permissionResult?.granted) {
-          console.log('⏳ Overlay permission not granted, waiting for user to enable it');
-          return;
+          console.log('⏳ Overlay permission not granted, will retry when granted');
+          return false;
         }
 
         console.log('🚀 Starting monitoring service...');
@@ -101,29 +97,26 @@ export default function Dashboard() {
           });
 
           toast({
-            title: "Clipboard Monitoring Active",
-            description: "Copy any video link and we'll detect it automatically!",
+            title: "📱 Clipboard Monitoring Active",
+            description: "Copy a video link from any app to save it!",
           });
         }
 
+        return true;
+
       } catch (error: any) {
         console.error('❌ Clipboard monitoring initialization failed:', error);
-        console.error('Error details:', {
-          message: error?.message,
-          code: error?.code,
-          stack: error?.stack
-        });
         
         // Show error only for actual failures, not permission issues
         if (!error?.message?.includes('permission') && 
-            !error?.message?.includes('not granted') &&
-            !error?.message?.includes('not implemented')) {
+            !error?.message?.includes('not granted')) {
           toast({
             title: "Clipboard Monitoring Error",
-            description: error.message || "Please restart the app and try again.",
+            description: error.message || "Failed to start monitoring",
             variant: "destructive",
           });
         }
+        return false;
       }
     };
 
@@ -133,7 +126,6 @@ export default function Dashboard() {
         appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
           if (isActive && isSubscribed) {
             console.log('📱 App became active, re-checking clipboard monitoring...');
-            // Re-initialize monitoring when app comes to foreground
             await initClipboardMonitoring();
           }
         });
@@ -142,15 +134,47 @@ export default function Dashboard() {
       }
     };
 
-    initClipboardMonitoring();
+    // Periodically check if permission was granted and start monitoring
+    const startPermissionCheck = () => {
+      permissionCheckInterval = setInterval(async () => {
+        if (isSubscribed) {
+          const started = await initClipboardMonitoring();
+          if (started) {
+            // Stop checking once successfully started
+            if (permissionCheckInterval) {
+              clearInterval(permissionCheckInterval);
+              permissionCheckInterval = null;
+            }
+          }
+        }
+      }, 3000); // Check every 3 seconds
+    };
+
+    // Initial attempt
+    initClipboardMonitoring().then(started => {
+      if (!started) {
+        // If not started, begin periodic checking
+        startPermissionCheck();
+      }
+    });
+    
     setupAppListener();
 
     return () => {
       isSubscribed = false;
+      
+      // Clear permission check interval
+      if (permissionCheckInterval) {
+        clearInterval(permissionCheckInterval);
+      }
+      
+      // Stop monitoring service
       if (isAndroid) {
         ClipboardMonitor.stopMonitoring().catch(console.error);
         ClipboardMonitor.removeAllListeners().catch(console.error);
       }
+      
+      // Remove app state listener
       if (appStateListener) {
         Promise.resolve(appStateListener).then((listener: any) => {
           if (listener?.remove) {

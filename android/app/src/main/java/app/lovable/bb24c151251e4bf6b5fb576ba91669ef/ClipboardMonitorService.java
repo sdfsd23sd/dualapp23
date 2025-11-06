@@ -112,10 +112,12 @@ public class ClipboardMonitorService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Vaultly")
-            .setContentText("Monitoring clipboard for video links")
+            .setContentTitle("Vaultly Active")
+            .setContentText("Tap to copy a video link - I'll detect it automatically!")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build();
     }
 
