@@ -129,13 +129,17 @@ export default function Dashboard() {
 
     // Listen for app state changes to re-initialize when coming to foreground
     const setupAppListener = async () => {
-      appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
-        if (isActive && isSubscribed) {
-          console.log('📱 App became active, re-checking clipboard monitoring...');
-          // Re-initialize monitoring when app comes to foreground
-          await initClipboardMonitoring();
-        }
-      });
+      try {
+        appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
+          if (isActive && isSubscribed) {
+            console.log('📱 App became active, re-checking clipboard monitoring...');
+            // Re-initialize monitoring when app comes to foreground
+            await initClipboardMonitoring();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to setup app state listener:', error);
+      }
     };
 
     initClipboardMonitoring();
@@ -148,7 +152,11 @@ export default function Dashboard() {
         ClipboardMonitor.removeAllListeners().catch(console.error);
       }
       if (appStateListener) {
-        appStateListener.then((listener: any) => listener.remove()).catch(console.error);
+        Promise.resolve(appStateListener).then((listener: any) => {
+          if (listener?.remove) {
+            listener.remove();
+          }
+        }).catch(console.error);
       }
     };
   }, [isAndroid, user, toast]);
