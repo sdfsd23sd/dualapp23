@@ -20,7 +20,7 @@ public class ClipboardMonitorService extends Service {
     private static final String CHANNEL_ID = "ClipboardMonitorChannel";
     private static final int NOTIFICATION_ID = 1;
     private ClipboardManager clipboardManager;
-    private OverlayWindowManager overlayManager;
+    private FloatingBubbleManager bubbleManager;
     private String lastClipboardText = "";
     
     private final String[] SUPPORTED_DOMAINS = {
@@ -36,7 +36,7 @@ public class ClipboardMonitorService extends Service {
         
         try {
             clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            overlayManager = new OverlayWindowManager(this);
+            bubbleManager = new FloatingBubbleManager(this);
             
             createNotificationChannel();
             startForeground(NOTIFICATION_ID, createNotification());
@@ -69,8 +69,8 @@ public class ClipboardMonitorService extends Service {
                             
                             if (!clipText.equals(lastClipboardText) && isSupportedVideoUrl(clipText)) {
                                 lastClipboardText = clipText;
-                                Log.d(TAG, "Supported video URL detected, showing overlay");
-                                overlayManager.showOverlay(clipText);
+                                Log.d(TAG, "Supported video URL detected, showing bubble");
+                                bubbleManager.showBubble(clipText);
                             }
                         }
                     }
@@ -106,14 +106,15 @@ public class ClipboardMonitorService extends Service {
     }
 
     private Notification createNotification() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
+        Intent notificationIntent = new Intent(this, ClipboardMonitorService.class);
+        notificationIntent.putExtra("showBubble", true);
+        PendingIntent pendingIntent = PendingIntent.getService(
+            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Vaultly Active")
-            .setContentText("Tap to copy a video link - I'll detect it automatically!")
+            .setContentText("Tap to restore bubble - Copy video links to save")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -132,7 +133,32 @@ public class ClipboardMonitorService extends Service {
             return START_NOT_STICKY;
         }
         
+        // Handle notification tap to restore bubble
+        if (intent != null && intent.hasExtra("showBubble") && intent.getBooleanExtra("showBubble", false)) {
+            Log.d(TAG, "Restoring bubble from notification tap");
+            restoreBubbleIfUrlExists();
+        }
+        
         return START_STICKY;
+    }
+    
+    private void restoreBubbleIfUrlExists() {
+        try {
+            ClipData clipData = clipboardManager.getPrimaryClip();
+            if (clipData != null && clipData.getItemCount() > 0) {
+                CharSequence text = clipData.getItemAt(0).getText();
+                if (text != null) {
+                    String clipText = text.toString();
+                    if (isSupportedVideoUrl(clipText) && !bubbleManager.isBubbleVisible()) {
+                        Log.d(TAG, "Restoring bubble with existing URL: " + clipText);
+                        lastClipboardText = clipText;
+                        bubbleManager.showBubble(clipText);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error restoring bubble", e);
+        }
     }
 
     @Override
@@ -141,8 +167,8 @@ public class ClipboardMonitorService extends Service {
         if (clipboardManager != null) {
             clipboardManager.removePrimaryClipChangedListener(clipListener);
         }
-        if (overlayManager != null) {
-            overlayManager.hideOverlay();
+        if (bubbleManager != null) {
+            bubbleManager.hideBubble();
         }
     }
 

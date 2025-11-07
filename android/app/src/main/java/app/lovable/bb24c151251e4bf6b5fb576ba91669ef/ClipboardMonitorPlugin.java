@@ -39,7 +39,7 @@ public class ClipboardMonitorPlugin extends Plugin {
             Intent serviceIntent = new Intent(getContext(), ClipboardMonitorService.class);
             serviceIntent.setAction("START_MONITORING");
             getContext().startForegroundService(serviceIntent);
-            call.resolve();
+        call.resolve();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start monitoring service", e);
             call.reject("Failed to start monitoring: " + e.getMessage());

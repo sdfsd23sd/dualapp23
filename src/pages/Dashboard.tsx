@@ -66,30 +66,28 @@ export default function Dashboard() {
 
     let isSubscribed = true;
     let appStateListener: any = null;
-    let permissionCheckInterval: any = null;
 
     const initClipboardMonitoring = async () => {
       try {
-        console.log('🔍 Starting clipboard monitoring initialization');
+        console.log('🔍 Starting floating bubble monitoring');
         
         // Check overlay permission
         const permissionResult = await ClipboardMonitor.checkOverlayPermission();
         console.log('📋 Permission check result:', permissionResult);
         
         if (!permissionResult?.granted) {
-          console.log('⏳ Overlay permission not granted, will retry when granted');
+          console.log('⏳ Overlay permission not granted yet');
           return false;
         }
 
-        console.log('🚀 Starting monitoring service...');
-        // Start monitoring
+        console.log('🚀 Starting monitoring service with floating bubble...');
         await ClipboardMonitor.startMonitoring();
-        console.log('✅ Clipboard monitoring service started successfully');
+        console.log('✅ Floating bubble monitoring active');
 
-        // Listen for save clicks from overlay
+        // Listen for save clicks from bubble
         if (isSubscribed) {
           await ClipboardMonitor.addListener('saveClicked', (event) => {
-            console.log('💾 Save clicked event received:', event);
+            console.log('💾 Save clicked from bubble:', event);
             if (event?.url) {
               setUrlToSave(event.url);
               setSaveModalOpen(true);
@@ -98,7 +96,7 @@ export default function Dashboard() {
 
           toast({
             title: "📱 Clipboard Monitoring Active",
-            description: "Copy a video link from any app to save it!",
+            description: "Copy a video link - bubble will appear automatically!",
           });
         }
 
@@ -107,11 +105,10 @@ export default function Dashboard() {
       } catch (error: any) {
         console.error('❌ Clipboard monitoring initialization failed:', error);
         
-        // Show error only for actual failures, not permission issues
         if (!error?.message?.includes('permission') && 
             !error?.message?.includes('not granted')) {
           toast({
-            title: "Clipboard Monitoring Error",
+            title: "Monitoring Error",
             description: error.message || "Failed to start monitoring",
             variant: "destructive",
           });
@@ -120,12 +117,12 @@ export default function Dashboard() {
       }
     };
 
-    // Listen for app state changes to re-initialize when coming to foreground
+    // Listen for app state changes
     const setupAppListener = async () => {
       try {
         appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
           if (isActive && isSubscribed) {
-            console.log('📱 App became active, re-checking clipboard monitoring...');
+            console.log('📱 App became active, checking monitoring...');
             await initClipboardMonitoring();
           }
         });
@@ -134,39 +131,12 @@ export default function Dashboard() {
       }
     };
 
-    // Periodically check if permission was granted and start monitoring
-    const startPermissionCheck = () => {
-      permissionCheckInterval = setInterval(async () => {
-        if (isSubscribed) {
-          const started = await initClipboardMonitoring();
-          if (started) {
-            // Stop checking once successfully started
-            if (permissionCheckInterval) {
-              clearInterval(permissionCheckInterval);
-              permissionCheckInterval = null;
-            }
-          }
-        }
-      }, 3000); // Check every 3 seconds
-    };
-
-    // Initial attempt
-    initClipboardMonitoring().then(started => {
-      if (!started) {
-        // If not started, begin periodic checking
-        startPermissionCheck();
-      }
-    });
-    
+    // Start monitoring
+    initClipboardMonitoring();
     setupAppListener();
 
     return () => {
       isSubscribed = false;
-      
-      // Clear permission check interval
-      if (permissionCheckInterval) {
-        clearInterval(permissionCheckInterval);
-      }
       
       // Stop monitoring service
       if (isAndroid) {
