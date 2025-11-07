@@ -109,16 +109,18 @@ public class ClipboardMonitorService extends Service {
         Intent notificationIntent = new Intent(this, ClipboardMonitorService.class);
         notificationIntent.putExtra("showBubble", true);
         PendingIntent pendingIntent = PendingIntent.getService(
-            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+            this, 0, notificationIntent, 
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Vaultly Active")
-            .setContentText("Tap to restore bubble - Copy video links to save")
-            .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setContentText("Copy a video link - I'll detect it automatically!")
+            .setSmallIcon(android.R.drawable.ic_menu_save)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setAutoCancel(false)
             .build();
     }
 

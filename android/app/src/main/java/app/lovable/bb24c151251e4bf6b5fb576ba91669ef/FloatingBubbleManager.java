@@ -151,12 +151,22 @@ public class FloatingBubbleManager {
 
     private void openAppWithUrl() {
         try {
+            // Store URL in SharedPreferences as backup
+            android.content.SharedPreferences prefs = context.getSharedPreferences("VaultlyPrefs", android.content.Context.MODE_PRIVATE);
+            prefs.edit().putString("pendingUrl", currentUrl).apply();
+            
+            Log.d(TAG, "Opening app with URL: " + currentUrl);
+            
+            // Try to notify plugin if available
             ClipboardMonitorPlugin plugin = ClipboardMonitorPlugin.getInstance();
             if (plugin != null) {
-                Log.d(TAG, "Notifying plugin of save click");
+                Log.d(TAG, "Plugin available, notifying");
                 plugin.notifySaveClicked(currentUrl);
+            } else {
+                Log.d(TAG, "Plugin not available, URL stored in SharedPreferences");
             }
             
+            // Open MainActivity with intent
             Intent intent = new Intent(context, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             intent.putExtra("clipboardUrl", currentUrl);

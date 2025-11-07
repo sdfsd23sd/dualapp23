@@ -29,16 +29,24 @@ public class MainActivity extends BridgeActivity {
             boolean autoOpen = intent.getBooleanExtra("autoOpenSave", false);
             
             if (autoOpen && url != null) {
-                // Wait for bridge to initialize before notifying
+                // Store in SharedPreferences so plugin can pick it up when ready
+                android.content.SharedPreferences prefs = getSharedPreferences("VaultlyPrefs", MODE_PRIVATE);
+                prefs.edit().putString("pendingUrl", url).apply();
+                android.util.Log.d("MainActivity", "Stored pending URL: " + url);
+                
+                // Also try to notify immediately if plugin is ready
                 getBridge().getWebView().post(() -> {
                     try {
                         ClipboardMonitorPlugin plugin = (ClipboardMonitorPlugin) 
                             getBridge().getPlugin("ClipboardMonitor").getInstance();
                         if (plugin != null) {
+                            android.util.Log.d("MainActivity", "Plugin ready, notifying immediately");
                             plugin.notifySaveClicked(url);
+                            // Clear pending URL since we notified successfully
+                            prefs.edit().remove("pendingUrl").apply();
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        android.util.Log.e("MainActivity", "Error notifying plugin", e);
                     }
                 });
             }

@@ -19,10 +19,37 @@ public class ClipboardMonitorPlugin extends Plugin {
         super.load();
         instance = this;
         Log.d(TAG, "Plugin loaded and instance set");
+        
+        // Check for pending URL from SharedPreferences
+        checkPendingUrl();
     }
 
     public static ClipboardMonitorPlugin getInstance() {
         return instance;
+    }
+    
+    private void checkPendingUrl() {
+        try {
+            android.content.SharedPreferences prefs = getContext().getSharedPreferences("VaultlyPrefs", android.content.Context.MODE_PRIVATE);
+            String pendingUrl = prefs.getString("pendingUrl", null);
+            
+            if (pendingUrl != null && !pendingUrl.isEmpty()) {
+                Log.d(TAG, "Found pending URL: " + pendingUrl);
+                
+                // Notify after a short delay to ensure listeners are set up
+                getActivity().runOnUiThread(() -> {
+                    android.os.Handler handler = new android.os.Handler();
+                    handler.postDelayed(() -> {
+                        Log.d(TAG, "Notifying pending URL");
+                        notifySaveClicked(pendingUrl);
+                        // Clear the pending URL
+                        prefs.edit().remove("pendingUrl").apply();
+                    }, 1000); // 1 second delay
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking pending URL", e);
+        }
     }
 
     @PluginMethod
