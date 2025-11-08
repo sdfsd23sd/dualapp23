@@ -17,6 +17,11 @@ export interface ClipboardMonitorPlugin {
   removeAllListeners(): Promise<void>;
 }
 
-const ClipboardMonitor = registerPlugin<ClipboardMonitorPlugin>('ClipboardMonitor');
+const ClipboardMonitor = registerPlugin<ClipboardMonitorPlugin>('ClipboardMonitor', {
+  web: async () => {
+    const { ClipboardMonitorWeb } = await import('./ClipboardMonitorWeb');
+    return new ClipboardMonitorWeb();
+  },
+});
 
 export default ClipboardMonitor;
