@@ -4,15 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthToken } from "@/hooks/useAuthToken";
 import { User, Session } from "@supabase/supabase-js";
 import VideoGridWithDrag from "@/components/VideoGridWithDrag";
 import FolderListWithDrop from "@/components/FolderListWithDrop";
 import SaveVideoModal from "@/components/SaveVideoModal";
 import CreateFolderDialog from "@/components/CreateFolderDialog";
-import PermissionSetup from "@/components/PermissionSetup";
-import ClipboardMonitor from "@/plugins/ClipboardMonitor";
-import { Capacitor } from "@capacitor/core";
-import { App as CapApp } from "@capacitor/app";
 import { Plus, LogOut, Settings, Video, ChevronRight } from "lucide-react";
 
 interface DraggedVideo {
@@ -24,6 +21,7 @@ interface DraggedVideo {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  useAuthToken(); // Store auth token for native share target
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +30,6 @@ export default function Dashboard() {
   const [refreshVideos, setRefreshVideos] = useState(0);
   const [refreshFolders, setRefreshFolders] = useState(0);
   const [draggedVideo, setDraggedVideo] = useState<DraggedVideo | null>(null);
-  const isAndroid = Capacitor.getPlatform() === 'android';
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -60,100 +57,6 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Initialize native clipboard monitoring (Android only)
-  useEffect(() => {
-    if (!isAndroid || !user) return;
-
-    let isSubscribed = true;
-    let appStateListener: any = null;
-
-    const initClipboardMonitoring = async () => {
-      try {
-        console.log('🔍 Starting floating bubble monitoring');
-        
-        // Check overlay permission
-        const permissionResult = await ClipboardMonitor.checkOverlayPermission();
-        console.log('📋 Permission check result:', permissionResult);
-        
-        if (!permissionResult?.granted) {
-          console.log('⏳ Overlay permission not granted yet');
-          return false;
-        }
-
-        console.log('🚀 Starting monitoring service with floating bubble...');
-        await ClipboardMonitor.startMonitoring();
-        console.log('✅ Floating bubble monitoring active');
-
-        // Listen for save clicks from bubble
-        if (isSubscribed) {
-          await ClipboardMonitor.addListener('saveClicked', (event) => {
-            console.log('💾 Save clicked from bubble:', event);
-            if (event?.url) {
-              setUrlToSave(event.url);
-              setSaveModalOpen(true);
-            }
-          });
-
-          toast({
-            title: "📱 Clipboard Monitoring Active",
-            description: "Copy a video link - bubble will appear automatically!",
-          });
-        }
-
-        return true;
-
-      } catch (error: any) {
-        console.error('❌ Clipboard monitoring initialization failed:', error);
-        
-        if (!error?.message?.includes('permission') && 
-            !error?.message?.includes('not granted')) {
-          toast({
-            title: "Monitoring Error",
-            description: error.message || "Failed to start monitoring",
-            variant: "destructive",
-          });
-        }
-        return false;
-      }
-    };
-
-    // Listen for app state changes
-    const setupAppListener = async () => {
-      try {
-        appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
-          if (isActive && isSubscribed) {
-            console.log('📱 App became active, checking monitoring...');
-            await initClipboardMonitoring();
-          }
-        });
-      } catch (error) {
-        console.error('Failed to setup app state listener:', error);
-      }
-    };
-
-    // Start monitoring
-    initClipboardMonitoring();
-    setupAppListener();
-
-    return () => {
-      isSubscribed = false;
-      
-      // Stop monitoring service
-      if (isAndroid) {
-        ClipboardMonitor.stopMonitoring().catch(console.error);
-        ClipboardMonitor.removeAllListeners().catch(console.error);
-      }
-      
-      // Remove app state listener
-      if (appStateListener) {
-        Promise.resolve(appStateListener).then((listener: any) => {
-          if (listener?.remove) {
-            listener.remove();
-          }
-        }).catch(console.error);
-      }
-    };
-  }, [isAndroid, user, toast]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -225,9 +128,6 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Permission Setup Banner */}
-        <PermissionSetup />
-
         {/* Hero Section */}
         <div className="text-center space-y-4 py-8">
           <h2 className="text-4xl font-bold">Your Video Vault</h2>

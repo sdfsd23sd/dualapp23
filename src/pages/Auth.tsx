@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthToken } from "@/hooks/useAuthToken";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  useAuthToken(); // Store auth token for native share target
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
