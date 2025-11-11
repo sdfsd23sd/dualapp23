@@ -7,5 +7,8 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(android.os.Bundle savedInstanceState) {
         registerPlugin(SharedPreferencesPlugin.class);
         super.onCreate(savedInstanceState);
+        
+        // Initialize Direct Share shortcuts
+        ShortcutHelper.updateShortcuts(this);
     }
 }
