@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <shortcut
-        android:shortcutId="quick_save"
-        android:enabled="true"
-        android:icon="@mipmap/ic_launcher"
-        android:shortcutShortLabel="@string/app_name"
-        android:shortcutLongLabel="Save Video to Vaultly">
-        
-        <intent
-            android:action="android.intent.action.SEND"
-            android:targetPackage="app.lovable.bb24c151251e4bf6b5fb576ba91669ef"
-            android:targetClass="app.lovable.bb24c151251e4bf6b5fb576ba91669ef.ShareActivity" />
-            
-        <categories android:name="android.shortcut.conversation" />
-    </shortcut>
+    <share-target android:targetClass="app.lovable.bb24c151251e4bf6b5fb576ba91669ef.ShareActivity">
+        <data android:mimeType="text/plain" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </share-target>
 </shortcuts>

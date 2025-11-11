@@ -18,6 +18,9 @@ android {
         buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('VITE_SUPABASE_URL')}\""
         buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('VITE_SUPABASE_PUBLISHABLE_KEY')}\""
     }
+    buildFeatures {
+        buildConfig = true
+    }
     buildTypes {
         release {
             minifyEnabled false

@@ -39,10 +39,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-
-            <meta-data
-                android:name="android.service.chooser.chooser_target_service"
-                android:value="androidx.sharetarget.ChooserTargetServiceCompat" />
             
             <meta-data
                 android:name="android.app.shortcuts"

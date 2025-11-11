@@ -98,6 +98,14 @@ public class ShareActivity extends Activity {
                 String supabaseUrl = BuildConfig.SUPABASE_URL;
                 String supabaseKey = BuildConfig.SUPABASE_ANON_KEY;
                 
+                if (supabaseUrl == null || supabaseKey == null || supabaseUrl.isEmpty() || supabaseKey.isEmpty()) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "App configuration error. Please contact support.", Toast.LENGTH_LONG).show();
+                        finish();
+                    });
+                    return;
+                }
+                
                 // Get stored auth token
                 String authToken = getSharedPreferences("VaultlyPrefs", MODE_PRIVATE)
                     .getString("auth_token", null);
