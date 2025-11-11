@@ -6,34 +6,34 @@ import android.os.Build;
 import androidx.core.content.pm.ShortcutInfoCompat;
 import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ShortcutHelper {
     
     public static void updateShortcuts(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            List<ShortcutInfoCompat> shortcuts = new ArrayList<>();
-            
-            // Create a sharing shortcut for quick access
+            // Create intent for sharing
             Intent intent = new Intent(context, ShareActivity.class);
             intent.setAction(Intent.ACTION_SEND);
             intent.setType("text/plain");
             
+            // Create categories set for sharing shortcut
+            Set<String> categories = new HashSet<>();
+            categories.add("android.shortcut.conversation");
+            
+            // Build the sharing shortcut
             ShortcutInfoCompat shortcut = new ShortcutInfoCompat.Builder(context, "quick_save")
-                    .setShortLabel("Quick Save")
-                    .setLongLabel("Save Video to Vaultly")
+                    .setShortLabel("Vaultly")
+                    .setLongLabel("Save to Vaultly")
                     .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
                     .setIntent(intent)
+                    .setCategories(categories)
+                    .setLongLived(true)
                     .setRank(0)
                     .build();
             
-            shortcuts.add(shortcut);
-            
-            // Push dynamic shortcuts
-            ShortcutManagerCompat.addDynamicShortcuts(context, shortcuts);
-            
-            // Also set as sharing shortcuts for Direct Share
+            // Push as a sharing shortcut for Direct Share
             ShortcutManagerCompat.pushDynamicShortcut(context, shortcut);
         }
     }
