@@ -12,7 +12,7 @@
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">@drawable/splash_background</item>
     </style>
 
     <style name="Theme.Translucent.NoTitleBar" parent="android:Theme.Translucent.NoTitleBar">
