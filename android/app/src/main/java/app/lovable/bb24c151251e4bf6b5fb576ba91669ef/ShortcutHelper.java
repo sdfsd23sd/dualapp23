@@ -24,8 +24,8 @@ public class ShortcutHelper {
             
             // Build the sharing shortcut
             ShortcutInfoCompat shortcut = new ShortcutInfoCompat.Builder(context, "quick_save")
-                    .setShortLabel("Save to Vaultly")
-                    .setLongLabel("Save video to Vaultly")
+                    .setShortLabel(context.getString(R.string.shortcut_short_label))
+                    .setLongLabel(context.getString(R.string.shortcut_long_label))
                     .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
                     .setIntent(intent)
                     .setCategories(categories)
