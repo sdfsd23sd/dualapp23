@@ -21,7 +21,6 @@ import java.net.URL;
 public class ShareActivity extends Activity {
     private static final String TAG = "ShareActivity";
     private AlertDialog dialog;
-    private String sharedUrl;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -49,7 +48,6 @@ public class ShareActivity extends Activity {
             sharedText.contains("youtu.be") ||
             sharedText.contains("facebook.com"))) {
             
-            this.sharedUrl = sharedText;
             showQuickSaveDialog(sharedText);
         } else {
             Toast.makeText(this, "Please share a valid video link", Toast.LENGTH_SHORT).show();
