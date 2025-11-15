@@ -92,19 +92,6 @@ public class ShareActivity extends Activity {
     private void saveVideo(String url, String customTitle) {
         new Thread(() -> {
             try {
-                // Get Supabase URL and anon key from BuildConfig
-                String supabaseUrl = BuildConfig.SUPABASE_URL;
-                String supabaseKey = BuildConfig.SUPABASE_ANON_KEY;
-                
-                if (supabaseUrl == null || supabaseKey == null || supabaseUrl.isEmpty() || supabaseKey.isEmpty()) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "App configuration error. Please contact support.", Toast.LENGTH_LONG).show();
-                        if (dialog != null) dialog.dismiss();
-                        finish();
-                    });
-                    return;
-                }
-                
                 // Get stored auth token
                 String authToken = getSharedPreferences("VaultlyPrefs", MODE_PRIVATE)
                     .getString("auth_token", null);
@@ -119,12 +106,12 @@ public class ShareActivity extends Activity {
                 }
 
                 // Call save-video edge function
-                URL apiUrl = new URL(supabaseUrl + "/functions/v1/save-video");
+                URL apiUrl = new URL(BuildConfig.SUPABASE_URL + "/functions/v1/save-video");
                 HttpURLConnection conn = (HttpURLConnection) apiUrl.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setRequestProperty("Authorization", "Bearer " + authToken);
-                conn.setRequestProperty("apikey", supabaseKey);
+                conn.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY);
                 conn.setDoOutput(true);
 
                 JSONObject jsonBody = new JSONObject();
