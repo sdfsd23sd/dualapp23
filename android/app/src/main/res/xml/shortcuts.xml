@@ -4,8 +4,8 @@
         android:shortcutId="quick_save"
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
-        android:shortcutShortLabel="Save to Vaultly"
-        android:shortcutLongLabel="Save video to Vaultly">
+        android:shortcutShortLabel="@string/shortcut_short_label"
+        android:shortcutLongLabel="@string/shortcut_long_label">
         <intent
             android:action="android.intent.action.SEND"
             android:targetPackage="app.lovable.bb24c151251e4bf6b5fb576ba91669ef"
