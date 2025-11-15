@@ -4,12 +4,14 @@
         android:shortcutId="quick_save"
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
-        android:shortcutShortLabel="@string/app_name"
-        android:shortcutLongLabel="@string/app_name">
+        android:shortcutShortLabel="Save to Vaultly"
+        android:shortcutLongLabel="Save video to Vaultly">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="android.intent.action.SEND"
             android:targetPackage="app.lovable.bb24c151251e4bf6b5fb576ba91669ef"
-            android:targetClass="app.lovable.bb24c151251e4bf6b5fb576ba91669ef.ShareActivity" />
+            android:targetClass="app.lovable.bb24c151251e4bf6b5fb576ba91669ef.ShareActivity">
+            <data android:mimeType="text/plain" />
+        </intent>
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
 </shortcuts>

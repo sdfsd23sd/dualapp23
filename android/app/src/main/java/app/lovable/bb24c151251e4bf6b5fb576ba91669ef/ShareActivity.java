@@ -105,6 +105,12 @@ public class ShareActivity extends Activity {
                     return;
                 }
 
+                // Detect platform from URL
+                String platform = detectPlatform(url);
+                
+                // Use custom title or generate default
+                String title = customTitle.isEmpty() ? "Saved from " + platform : customTitle;
+
                 // Call save-video edge function
                 URL apiUrl = new URL(BuildConfig.SUPABASE_URL + "/functions/v1/save-video");
                 HttpURLConnection conn = (HttpURLConnection) apiUrl.openConnection();
@@ -116,9 +122,8 @@ public class ShareActivity extends Activity {
 
                 JSONObject jsonBody = new JSONObject();
                 jsonBody.put("url", url);
-                if (!customTitle.isEmpty()) {
-                    jsonBody.put("title", customTitle);
-                }
+                jsonBody.put("title", title);
+                jsonBody.put("platform", platform);
 
                 OutputStream os = conn.getOutputStream();
                 os.write(jsonBody.toString().getBytes());
@@ -146,6 +151,19 @@ public class ShareActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private String detectPlatform(String url) {
+        if (url.contains("instagram.com")) {
+            return "Instagram";
+        } else if (url.contains("tiktok.com")) {
+            return "TikTok";
+        } else if (url.contains("youtube.com") || url.contains("youtu.be")) {
+            return "YouTube";
+        } else if (url.contains("facebook.com")) {
+            return "Facebook";
+        }
+        return "Unknown";
     }
 
     private String truncateUrl(String url) {

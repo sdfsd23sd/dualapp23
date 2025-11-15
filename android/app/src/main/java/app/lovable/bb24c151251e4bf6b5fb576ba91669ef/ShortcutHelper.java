@@ -13,9 +13,10 @@ public class ShortcutHelper {
     
     public static void updateShortcuts(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            // Create intent for the main activity
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setClass(context, MainActivity.class);
+            // Create intent for sharing to ShareActivity
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setClass(context, ShareActivity.class);
+            intent.setType("text/plain");
             
             // Create categories set for sharing shortcut
             Set<String> categories = new HashSet<>();
@@ -23,8 +24,8 @@ public class ShortcutHelper {
             
             // Build the sharing shortcut
             ShortcutInfoCompat shortcut = new ShortcutInfoCompat.Builder(context, "quick_save")
-                    .setShortLabel("Vaultly")
-                    .setLongLabel("Save to Vaultly")
+                    .setShortLabel("Save to Vaultly")
+                    .setLongLabel("Save video to Vaultly")
                     .setIcon(IconCompat.createWithResource(context, R.mipmap.ic_launcher))
                     .setIntent(intent)
                     .setCategories(categories)
