@@ -13,10 +13,9 @@ public class ShortcutHelper {
     
     public static void updateShortcuts(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            // Create intent for sharing
-            Intent intent = new Intent(context, ShareActivity.class);
-            intent.setAction(Intent.ACTION_SEND);
-            intent.setType("text/plain");
+            // Create intent for the main activity
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setClass(context, MainActivity.class);
             
             // Create categories set for sharing shortcut
             Set<String> categories = new HashSet<>();
