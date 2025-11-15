@@ -70,7 +70,7 @@ public class ShareActivity extends Activity {
         urlText.setText(truncateUrl(url));
         
         cancelButton.setOnClickListener(v -> {
-            dialog.dismiss();
+            if (dialog != null) dialog.dismiss();
             finish();
         });
         
@@ -94,13 +94,14 @@ public class ShareActivity extends Activity {
     private void saveVideo(String url, String customTitle) {
         new Thread(() -> {
             try {
-                // Get Supabase URL and anon key from environment
+                // Get Supabase URL and anon key from BuildConfig
                 String supabaseUrl = BuildConfig.SUPABASE_URL;
                 String supabaseKey = BuildConfig.SUPABASE_ANON_KEY;
                 
                 if (supabaseUrl == null || supabaseKey == null || supabaseUrl.isEmpty() || supabaseKey.isEmpty()) {
                     runOnUiThread(() -> {
                         Toast.makeText(this, "App configuration error. Please contact support.", Toast.LENGTH_LONG).show();
+                        if (dialog != null) dialog.dismiss();
                         finish();
                     });
                     return;
@@ -113,6 +114,7 @@ public class ShareActivity extends Activity {
                 if (authToken == null) {
                     runOnUiThread(() -> {
                         Toast.makeText(this, "Please log in to the app first", Toast.LENGTH_LONG).show();
+                        if (dialog != null) dialog.dismiss();
                         finish();
                     });
                     return;
