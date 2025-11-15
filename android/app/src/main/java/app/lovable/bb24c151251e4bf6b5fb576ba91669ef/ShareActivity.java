@@ -131,13 +131,33 @@ public class ShareActivity extends Activity {
                 os.close();
 
                 int responseCode = conn.getResponseCode();
+                String message;
                 
-                runOnUiThread(() -> {
-                    if (responseCode == 200) {
-                        Toast.makeText(this, "✓ Video saved successfully!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "Failed to save video", Toast.LENGTH_SHORT).show();
+                if (responseCode == 200) {
+                    message = "✓ Video saved successfully!";
+                } else {
+                    // Try to read error message from response
+                    try {
+                        java.io.BufferedReader reader = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(conn.getErrorStream())
+                        );
+                        StringBuilder errorResponse = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            errorResponse.append(line);
+                        }
+                        reader.close();
+                        
+                        JSONObject errorJson = new JSONObject(errorResponse.toString());
+                        message = "Error: " + errorJson.optString("error", "Failed to save video");
+                    } catch (Exception parseError) {
+                        message = "Failed to save video (Status: " + responseCode + ")";
                     }
+                }
+                
+                final String finalMessage = message;
+                runOnUiThread(() -> {
+                    Toast.makeText(this, finalMessage, Toast.LENGTH_LONG).show();
                     if (dialog != null) dialog.dismiss();
                     finish();
                 });
