@@ -15,8 +15,8 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
-        buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('VITE_SUPABASE_URL') ?: ''}\""
-        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('VITE_SUPABASE_PUBLISHABLE_KEY') ?: ''}\""
+        buildConfigField "String", "SUPABASE_URL", "\"https://cqrvtaxjsurbcmkiowum.supabase.co\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxcnZ0YXhqc3VyYmNta2lvd3VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NTI2NDksImV4cCI6MjA3NzIyODY0OX0.OW8pRActVjB8Rmy6CuALriJgoFTwbR-fdmlzL6gLNtM\""
     }
     buildFeatures {
         buildConfig = true
